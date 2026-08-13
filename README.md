@@ -22,7 +22,7 @@ Copy `.env.example` to `.env` and point it at your MongoDB:
 
 ```
 MONGODB_URI=mongodb://127.0.0.1:27017
-MONGODB_DATABASE=onboardx
+MONGODB_DATABASE=OnboardX
 ```
 
 ## Run

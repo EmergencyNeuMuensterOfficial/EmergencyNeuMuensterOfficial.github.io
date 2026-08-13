@@ -1,4 +1,4 @@
-import { MongoClient, type Db } from 'mongodb';
+import { MongoClient, type Db, type Filter, type Document } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
 const MONGODB_DATABASE = process.env.MONGODB_DATABASE || process.env.DB_NAME || 'OnboardX';
@@ -103,3 +103,31 @@ export const COLLECTIONS = {
   shardStatuses: 'shard_statuses',
   guildConfigs: 'guild_configs',
 } as const;
+
+export async function getGuildConfig(guildId: string): Promise<Document | null> {
+  const dbHandle = await connectDb();
+  const filter: Filter<Document> = { $or: [{ _id: guildId } as unknown as Filter<Document>, { guildId }] };
+  return dbHandle.collection(COLLECTIONS.guildConfigs).findOne(filter);
+}
+
+export async function updateGuildConfig(
+  guildId: string,
+  updates: Record<string, unknown>
+): Promise<void> {
+  const dbHandle = await connectDb();
+  const collection = dbHandle.collection(COLLECTIONS.guildConfigs);
+  const filter: Filter<Document> = { $or: [{ _id: guildId } as unknown as Filter<Document>, { guildId }] };
+  const existing = await collection.findOne(filter);
+
+  const setFields: Document = { guildId, updatedAt: new Date() };
+  for (const [path, value] of Object.entries(updates)) {
+    setFields[path] = value;
+  }
+
+  const screen: Filter<Document> = ({ _id: existing?._id ?? guildId } as unknown) as Filter<Document>;
+  await collection.updateOne(
+    screen,
+    { $set: setFields, $setOnInsert: { createdAt: new Date() } },
+    { upsert: true }
+  );
+}
