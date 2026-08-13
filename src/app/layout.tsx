@@ -5,8 +5,8 @@ import '../styles/globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'OnboardX Status',
-  description: 'Live status page for the OnboardX Discord bot.',
+  title: 'OnboardX',
+  description: 'OnboardX — a Discord bot that helps server owners onboard new members with a smooth, automated welcome experience.',
   keywords: ['Discord', 'bot', 'status', 'statuspage', 'onboardx'],
   authors: [{ name: 'OnboardX Team' }],
   robots: {

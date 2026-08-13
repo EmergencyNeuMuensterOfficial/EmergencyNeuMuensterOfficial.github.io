@@ -62,6 +62,21 @@ export interface ShardStatusRecord {
   expiresAt: string | null;
 }
 
+export interface HostDetails {
+  host: string | null;
+  platform: string | null;
+  node: string | null;
+  managerPid: number | null;
+  bootedAt: string | null;
+  stoppedAt: string | null;
+  lastSnapshotAt: string | null;
+  healthPort: number | null;
+  statusSyncMs: number | null;
+  memoryMB: number;
+  state: string;
+  online: boolean;
+}
+
 export interface StatusPayload {
   isOnline: boolean;
   state: string;
@@ -79,6 +94,7 @@ export interface StatusPayload {
   lastSnapshotAt: string | null;
   maintenance: MaintenanceInfo;
   discordGateway: DiscordGatewayInfo;
+  hostDetails: HostDetails;
   clusters: ClusterStatusRecord[];
   shards: ShardStatusRecord[];
   ok: boolean;
@@ -114,7 +130,7 @@ function defaultMaintenance(doc?: { maintenance?: Partial<MaintenanceInfo> }): M
   const enabled = doc?.maintenance?.enabled === true;
   return {
     enabled,
-    message: doc?.maintenance?.message ?? (enabled ? 'Scheduled maintenance is active.' : null),
+    message: enabled ? (doc?.maintenance?.message ?? 'Scheduled maintenance is active.') : null,
     startedAt: doc?.maintenance?.startedAt ?? null,
     estimatedEndAt: doc?.maintenance?.estimatedEndAt ?? null,
   };
@@ -152,6 +168,8 @@ function normalizeSystemStatus(doc: Record<string, unknown> | null | undefined) 
     host: (doc?.host as string | undefined) ?? null,
     platform: (doc?.platform as string | undefined) ?? null,
     node: (doc?.node as string | undefined) ?? null,
+    healthPort: doc?.healthPort != null ? numberValue(doc.healthPort) : null,
+    statusSyncMs: doc?.statusSyncMs != null ? numberValue(doc.statusSyncMs) : null,
     clusterCount: numberValue(doc?.clusterCount),
     readyClusters: numberValue(doc?.readyClusters),
     totalShards: numberValue(doc?.totalShards),
@@ -263,6 +281,20 @@ export async function fetchBotStatus(): Promise<StatusPayload> {
     lastSnapshotAt: system.lastSnapshotAt,
     maintenance: system.maintenance,
     discordGateway: system.discordGateway,
+    hostDetails: {
+      host: system.host,
+      platform: system.platform,
+      node: system.node,
+      managerPid: system.managerPid,
+      bootedAt: system.bootedAt,
+      stoppedAt: system.stoppedAt,
+      lastSnapshotAt: system.lastSnapshotAt,
+      healthPort: system.healthPort,
+      statusSyncMs: system.statusSyncMs,
+      memoryMB: system.memoryMB,
+      state: system.state,
+      online: system.online,
+    },
     clusters,
     shards,
     ok: isOnline,
