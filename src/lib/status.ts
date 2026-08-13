@@ -1,0 +1,272 @@
+import type { Filter, Document } from 'mongodb';
+import { connectDb, COLLECTIONS } from '@/lib/mongo';
+
+const SYSTEM_STATUS_FILTER = { _id: 'clusterStatus' as unknown } as Filter<Document>;
+
+export interface MaintenanceInfo {
+  enabled: boolean;
+  message: string | null;
+  startedAt: string | null;
+  estimatedEndAt: string | null;
+}
+
+export interface DiscordGatewayInfo {
+  clusters: Record<string, unknown>;
+  shards: Record<string, unknown>;
+  avgPingMs: number;
+  reconnectingClusters: number;
+  disconnectedClusters: number;
+  reconnectingShards: number;
+  disconnectedShards: number;
+  readyShards: number;
+  totalShards: number;
+}
+
+export interface ClusterStatusRecord {
+  id: string | number;
+  clusterId: number;
+  state: string;
+  processState: string;
+  ready: boolean;
+  online: boolean;
+  stale: boolean;
+  shardCount: number;
+  shards: number[];
+  guilds: number;
+  users: number;
+  channels: number;
+  ping: number;
+  uptime: number;
+  memoryMB: number;
+  wsStatus: string;
+  wsStatusLabel: string;
+  lastHeartbeatAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface ShardStatusRecord {
+  id: string | number;
+  shardId: number;
+  clusterId: number | null;
+  state: string;
+  ready: boolean;
+  online: boolean;
+  stale: boolean;
+  statusCode: number | null;
+  ping: number;
+  guilds: number;
+  users: number;
+  channels: number;
+  sequence: number | null;
+  lastHeartbeatAt: string | null;
+  expiresAt: string | null;
+}
+
+export interface StatusPayload {
+  isOnline: boolean;
+  state: string;
+  stale: boolean;
+  uptime: number;
+  memoryUsage: { rss: number; heapTotal: number; heapUsed: number; external: number };
+  shardCount: number;
+  readyShards: number;
+  clusterCount: number;
+  readyClusters: number;
+  averagePing: number;
+  totalGuilds: number;
+  totalUsers: number;
+  host: string | null;
+  lastSnapshotAt: string | null;
+  maintenance: MaintenanceInfo;
+  discordGateway: DiscordGatewayInfo;
+  clusters: ClusterStatusRecord[];
+  shards: ShardStatusRecord[];
+  ok: boolean;
+  database: 'connected' | 'unavailable';
+  lastUpdated: string;
+}
+
+function parseDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'object' && value !== null && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isExpired(expiresAt: unknown): boolean {
+  const date = parseDate(expiresAt);
+  return Boolean(date && date.getTime() <= Date.now());
+}
+
+function numberValue(value: unknown, fallback = 0): number {
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function textValue(value: unknown, fallback = 'unknown'): string {
+  return typeof value === 'string' && value.length > 0 ? value : fallback;
+}
+
+function defaultMaintenance(doc?: { maintenance?: Partial<MaintenanceInfo> }): MaintenanceInfo {
+  const enabled = doc?.maintenance?.enabled === true;
+  return {
+    enabled,
+    message: doc?.maintenance?.message ?? (enabled ? 'Scheduled maintenance is active.' : null),
+    startedAt: doc?.maintenance?.startedAt ?? null,
+    estimatedEndAt: doc?.maintenance?.estimatedEndAt ?? null,
+  };
+}
+
+function defaultDiscordGateway(doc?: { discordGateway?: Partial<DiscordGatewayInfo>; totalShards?: number }): DiscordGatewayInfo {
+  return {
+    clusters: (doc?.discordGateway?.clusters as Record<string, unknown>) ?? {},
+    shards: (doc?.discordGateway?.shards as Record<string, unknown>) ?? {},
+    avgPingMs: numberValue(doc?.discordGateway?.avgPingMs, -1),
+    reconnectingClusters: numberValue(doc?.discordGateway?.reconnectingClusters),
+    disconnectedClusters: numberValue(doc?.discordGateway?.disconnectedClusters),
+    reconnectingShards: numberValue(doc?.discordGateway?.reconnectingShards),
+    disconnectedShards: numberValue(doc?.discordGateway?.disconnectedShards),
+    readyShards: numberValue(doc?.discordGateway?.readyShards),
+    totalShards: numberValue(doc?.discordGateway?.totalShards, numberValue(doc?.totalShards)),
+  };
+}
+
+function normalizeSystemStatus(doc: Record<string, unknown> | null | undefined) {
+  const stale = isExpired(doc?.expiresAt);
+  const maintenance = defaultMaintenance(doc as { maintenance?: Partial<MaintenanceInfo> });
+  const online = !stale && doc?.state !== 'stopped' && doc?.state !== 'offline';
+
+  return {
+    id: 'clusterStatus',
+    state: stale ? 'offline' : online ? textValue(doc?.state, 'running') : 'offline',
+    online,
+    stale,
+    bootedAt: (doc?.bootedAt as string | undefined) ?? null,
+    stoppedAt: (doc?.stoppedAt as string | undefined) ?? null,
+    lastSnapshotAt: (doc?.lastSnapshotAt as string | undefined) ?? null,
+    expiresAt: (doc?.expiresAt as string | undefined) ?? null,
+    managerPid: doc?.managerPid != null ? numberValue(doc.managerPid) : null,
+    host: (doc?.host as string | undefined) ?? null,
+    platform: (doc?.platform as string | undefined) ?? null,
+    node: (doc?.node as string | undefined) ?? null,
+    clusterCount: numberValue(doc?.clusterCount),
+    readyClusters: numberValue(doc?.readyClusters),
+    totalShards: numberValue(doc?.totalShards),
+    readyShards: numberValue(doc?.readyShards),
+    totalGuilds: numberValue(doc?.totalGuilds),
+    totalUsers: numberValue(doc?.totalUsers),
+    avgPingMs: numberValue(doc?.avgPingMs, -1),
+    memoryMB: numberValue(doc?.memoryMB),
+    maintenance,
+    discordGateway: defaultDiscordGateway(doc as { discordGateway?: Partial<DiscordGatewayInfo>; totalShards?: number }),
+  };
+}
+
+function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusRecord {
+  const stale = isExpired(doc.expiresAt);
+  const online = !stale && doc.state !== 'stopped' && doc.state !== 'offline';
+  const clusterId = numberValue(doc.clusterId ?? doc._id);
+
+  return {
+    id: clusterId,
+    clusterId,
+    state: stale ? 'offline' : textValue(doc.state),
+    processState: stale ? 'offline' : textValue(doc.processState, textValue(doc.state)),
+    ready: stale ? false : doc.ready === true,
+    online,
+    stale,
+    shardCount: numberValue(doc.shardCount, Array.isArray(doc.shards) ? doc.shards.length : 0),
+    shards: Array.isArray(doc.shards) ? doc.shards.map((shard) => numberValue(shard)) : [],
+    guilds: numberValue(doc.guilds),
+    users: numberValue(doc.users),
+    channels: numberValue(doc.channels),
+    ping: numberValue(doc.ping, -1),
+    uptime: numberValue(doc.uptime),
+    memoryMB: numberValue(doc.memoryMB),
+    wsStatus: textValue(doc.wsStatus),
+    wsStatusLabel: stale ? 'offline' : textValue(doc.wsStatusLabel, textValue(doc.wsStatus)),
+    lastHeartbeatAt: (doc.lastHeartbeatAt as string | undefined) ?? null,
+    expiresAt: (doc.expiresAt as string | undefined) ?? null,
+  };
+}
+
+function normalizeShardStatus(doc: Record<string, unknown>): ShardStatusRecord {
+  const stale = isExpired(doc.expiresAt);
+  const online = !stale && doc.state !== 'stopped' && doc.state !== 'offline';
+  const shardId = numberValue(doc.shardId ?? doc._id);
+
+  return {
+    id: shardId,
+    shardId,
+    clusterId: doc.clusterId == null ? null : numberValue(doc.clusterId),
+    state: stale ? 'offline' : textValue(doc.state),
+    ready: stale ? false : doc.ready === true,
+    online,
+    stale,
+    statusCode: stale ? null : doc.statusCode == null ? null : numberValue(doc.statusCode),
+    ping: numberValue(doc.ping, -1),
+    guilds: numberValue(doc.guilds),
+    users: numberValue(doc.users),
+    channels: numberValue(doc.channels),
+    sequence: doc.sequence == null ? null : numberValue(doc.sequence),
+    lastHeartbeatAt: (doc.lastHeartbeatAt as string | undefined) ?? null,
+    expiresAt: (doc.expiresAt as string | undefined) ?? null,
+  };
+}
+
+export async function fetchBotStatus(): Promise<StatusPayload> {
+  const db = await connectDb();
+
+  const [systemDoc, clusterDocs, shardDocs, configuredGuilds] = await Promise.all([
+    db.collection(COLLECTIONS.systemDocs).findOne(SYSTEM_STATUS_FILTER),
+    db.collection(COLLECTIONS.clusterStatuses).find({}).sort({ clusterId: 1 }).toArray(),
+    db.collection(COLLECTIONS.shardStatuses).find({}).sort({ shardId: 1 }).toArray(),
+    db.collection(COLLECTIONS.guildConfigs).countDocuments(),
+  ]);
+
+  const system = normalizeSystemStatus(systemDoc as Record<string, unknown> | null);
+  const clusters = clusterDocs.map((doc) => normalizeClusterStatus(doc as Record<string, unknown>));
+  const shards = shardDocs.map((doc) => normalizeShardStatus(doc as Record<string, unknown>));
+
+  const freshCluster = clusters.find((cluster) => !cluster.stale);
+  const isOnline = system.online || clusters.some((cluster) => cluster.online) || shards.some((shard) => shard.online);
+
+  const lastUpdated =
+    parseDate(system.lastSnapshotAt)
+    ?? parseDate(freshCluster?.lastHeartbeatAt)
+    ?? parseDate(shards.find((shard) => !shard.stale)?.lastHeartbeatAt)
+    ?? new Date();
+
+  const displayState = system.maintenance.enabled
+    ? 'maintenance'
+    : system.stale && !isOnline
+      ? 'offline'
+      : system.state;
+
+  return {
+    isOnline,
+    state: displayState,
+    stale: system.stale && !clusters.some((cluster) => !cluster.stale) && !shards.some((shard) => !shard.stale),
+    uptime: freshCluster?.uptime ?? 0,
+    memoryUsage: { rss: system.memoryMB, heapTotal: 0, heapUsed: system.memoryMB, external: 0 },
+    shardCount: system.totalShards || shards.length,
+    readyShards: system.readyShards || shards.filter((shard) => shard.ready).length,
+    clusterCount: system.clusterCount || clusters.length,
+    readyClusters: system.readyClusters || clusters.filter((cluster) => cluster.ready).length,
+    averagePing: system.avgPingMs >= 0 ? system.avgPingMs : freshCluster?.ping ?? -1,
+    totalGuilds: system.totalGuilds || configuredGuilds,
+    totalUsers: system.totalUsers,
+    host: system.host,
+    lastSnapshotAt: system.lastSnapshotAt,
+    maintenance: system.maintenance,
+    discordGateway: system.discordGateway,
+    clusters,
+    shards,
+    ok: isOnline,
+    database: 'connected',
+    lastUpdated: lastUpdated.toISOString(),
+  };
+}
