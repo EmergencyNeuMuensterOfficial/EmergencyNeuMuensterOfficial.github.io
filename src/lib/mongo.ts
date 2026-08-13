@@ -1,7 +1,7 @@
 import { MongoClient, type Db } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
-const MONGODB_DATABASE = process.env.MONGODB_DATABASE || process.env.DB_NAME || 'onboardx';
+const MONGODB_DATABASE = process.env.MONGODB_DATABASE || process.env.DB_NAME || 'OnboardX';
 
 let client: MongoClient | null = null;
 let db: Db | null = null;
