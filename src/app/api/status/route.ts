@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchBotStatus } from '@/lib/status';
+import { fetchBotStatus } from '../../../lib/status';
 
 export const dynamic = 'force-dynamic';
 

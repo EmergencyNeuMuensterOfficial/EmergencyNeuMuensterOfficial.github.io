@@ -1,5 +1,5 @@
 import type { Filter, Document } from 'mongodb';
-import { connectDb, COLLECTIONS } from '@/lib/mongo';
+import { connectDb, COLLECTIONS } from './mongo';
 
 const SYSTEM_STATUS_FILTER = { _id: 'clusterStatus' as unknown } as Filter<Document>;
 

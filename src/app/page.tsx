@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { StatusPayload } from '@/lib/status';
+import type { StatusPayload } from '../lib/status';
 
 function formatUptime(seconds: number) {
   if (!seconds || seconds <= 0) return '—';

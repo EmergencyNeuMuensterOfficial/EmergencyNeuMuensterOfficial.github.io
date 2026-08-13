@@ -7,5 +7,7 @@ dist
 .env.production
 logs
 *.log
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 .DS_Store
 next-env.d.ts
