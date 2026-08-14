@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/status', label: 'Status' },
+  { href: '/admin', label: 'Admin' },
 ];
 
 export function Sidebar() {
