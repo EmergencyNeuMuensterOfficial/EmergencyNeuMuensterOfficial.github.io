@@ -162,6 +162,30 @@ export default function StatusPage() {
         </div>
 
         <main className="mx-auto max-w-5xl px-6 py-10">
+        {loading && !status && (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-discord-gray/20 bg-discord-darker px-6 py-24 text-center animate-fade-in-up">
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-discord-blue/10">
+              <span className="absolute inset-0 animate-ping rounded-2xl bg-discord-blue/20" />
+              <span className="h-2.5 w-2.5 rounded-full bg-discord-blue animate-pulse" />
+            </div>
+            <p className="mt-5 text-sm font-semibold text-discord-white">Loading system status…</p>
+            <p className="mt-1 text-xs text-discord-lightGray">Fetching live cluster &amp; shard data from the database.</p>
+          </div>
+        )}
+        {error && !status && (
+          <div className="rounded-2xl border border-discord-red/40 bg-discord-red/10 px-6 py-16 text-center animate-fade-in-up">
+            <p className="text-sm font-semibold text-discord-red">Unable to load status</p>
+            <p className="mt-1 text-xs text-discord-lightGray">{error}</p>
+            <button
+              onClick={() => { setLoading(true); void loadStatus(); }}
+              className="mt-5 rounded-lg border border-discord-gray/40 px-4 py-2 text-xs font-semibold text-discord-lighterGray transition hover:bg-discord-gray/40"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {status && (
+        <>
         <Reveal>
         <section className="animate-fade-in-up rounded-2xl border border-discord-gray/20 bg-discord-darker p-6 sm:p-8">
           <div className="flex items-center gap-3">
@@ -369,7 +393,7 @@ export default function StatusPage() {
                                   >
                                     {shard.shardId}
                                   </p>
-                                  <div className="pointer-events-none absolute -top-2 left-1/2 z-50 hidden -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg border border-discord-gray/40 bg-discord-darkest px-3 py-2 text-left text-xs shadow-2xl group-hover:block">
+                                  <div className="pointer-events-none absolute -top-2 left-1/2 z-50 -translate-x-1/2 -translate-y-full scale-95 whitespace-nowrap rounded-lg border border-discord-gray/40 bg-discord-darkest px-3 py-2 text-left text-xs opacity-0 shadow-2xl transition-all duration-150 ease-out group-hover:scale-100 group-hover:opacity-100">
                                     <p className="font-semibold text-discord-white">Shard #{shard.shardId}</p>
                                     <p className="mt-0.5 text-discord-lighterGray">
                                       State: <span className="font-semibold text-discord-white">{shard.state}</span>
@@ -421,6 +445,8 @@ export default function StatusPage() {
             Last successful poll: {formatDate(status?.lastUpdated ?? null)} · checks every 30 seconds
           </p>
         </footer>
+        </>
+        )}
         </main>
       </div>
     </div>

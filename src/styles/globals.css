@@ -157,6 +157,17 @@ input[type='range'] {
   }
 }
 
+@keyframes tooltip-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -90%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
 @keyframes float-spin-slow {
   from {
     transform: rotate(0deg);
@@ -180,6 +191,10 @@ input[type='range'] {
   .animate-fade-in-up {
     animation: fade-in-up 0.7s ease-out both;
   }
+  .animate-tooltip {
+    transform-origin: bottom center;
+    animation: tooltip-pop 0.18s ease-out both;
+  }
   .animate-spin-slow {
     animation: float-spin-slow 24s linear infinite;
   }
@@ -190,6 +205,7 @@ input[type='range'] {
   .animate-glow,
   .animate-gradient-x,
   .animate-fade-in-up,
+  .animate-tooltip,
   .animate-spin-slow {
     animation: none;
   }
