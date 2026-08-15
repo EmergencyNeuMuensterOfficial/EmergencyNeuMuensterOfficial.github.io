@@ -73,12 +73,12 @@ export default function AdminPage() {
         setData(null);
         return;
       }
-      const payload = (await response.json()) as AdminData & { ok?: boolean; error?: string };
+      const payload = (await response.json()) as { ok?: boolean; error?: string; data: AdminData };
       if (!response.ok || payload.ok === false) {
         throw new Error(payload.error || 'Failed to load admin data');
       }
       setAuth('authed');
-      setData(payload as AdminData);
+      setData(payload.data as AdminData);
     } catch (error) {
       setData(null);
       setMessage(error instanceof Error ? error.message : 'Failed to load admin data');
