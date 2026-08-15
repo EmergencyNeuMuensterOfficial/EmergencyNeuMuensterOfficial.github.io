@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchControlCommands, hasAdminAccess } from '../../../../lib/admin';
+import { fetchControlCommands, hasAdminPanelAccess } from '../../../../lib/admin';
 import { fetchBotStatus } from '../../../../lib/status';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  if (!hasAdminAccess(request)) {
+  if (!hasAdminPanelAccess(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

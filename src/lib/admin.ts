@@ -1,11 +1,23 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { NextRequest } from 'next/server';
 import { connectDb, COLLECTIONS } from './mongo';
+import { verifySessionToken, COOKIE_NAME } from './session';
 
 export const ADMIN_COOKIE_NAME = 'onboardx_admin';
 
 const ADMIN_KEY = process.env.OBNX_SECRECT_KEY ?? '';
 const ADMIN_TTL_MS = 8 * 60 * 60 * 1000;
+
+// Comma-separated Discord user IDs allowed to use /admin without the shared
+// password. Logging in with one of these accounts grants admin access.
+const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS ?? '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter((id) => /^\d{15,25}$/.test(id));
+
+export function isWhitelistedAdminUser(userId: string): boolean {
+  return ADMIN_USER_IDS.includes(userId);
+}
 
 function base64UrlEncode(value: string): string {
   return Buffer.from(value).toString('base64url');
@@ -54,6 +66,16 @@ export function hasAdminAccess(request: NextRequest): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Admin access via a whitelisted Discord login session. Falls back to the
+ * shared password cookie so existing deployments keep working.
+ */
+export function hasAdminPanelAccess(request: NextRequest): boolean {
+  if (hasAdminAccess(request)) return true;
+  const session = verifySessionToken(request.cookies.get(COOKIE_NAME)?.value);
+  return session !== null && isWhitelistedAdminUser(session.userId);
 }
 
 // ── Cluster control commands ────────────────────────────────────────────────

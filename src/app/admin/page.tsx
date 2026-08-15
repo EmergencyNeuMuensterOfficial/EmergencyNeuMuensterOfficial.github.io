@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import type { StatusPayload } from '../../lib/status';
 import { Sidebar } from '../../components/Sidebar';
@@ -13,6 +14,14 @@ interface ControlCommand {
   startedAt: string | null;
   finishedAt: string | null;
   error: string | null;
+}
+
+interface AccessInfo {
+  loggedIn: boolean;
+  allowed: boolean;
+  whitelisted: boolean;
+  adminToken: boolean;
+  username?: string;
 }
 
 interface AdminData {
@@ -69,14 +78,26 @@ function shardTone(ready: boolean, state: string): { border: string; bg: string;
 }
 
 export default function AdminPage() {
-  const [auth, setAuth] = useState<'unknown' | 'authed' | 'denied'>('unknown');
+  const [auth, setAuth] = useState<'unknown' | 'authed' | 'denied' | 'forbidden'>('unknown');
   const [loading, setLoading] = useState(true);
-  const [password, setPassword] = useState('');
+  const [access, setAccess] = useState<AccessInfo | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [data, setData] = useState<AdminData | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<string>('');
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [expandedCluster, setExpandedCluster] = useState<number | null>(null);
+
+  const checkAccess = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/access', { cache: 'no-store' });
+      const payload = (await response.json()) as AccessInfo;
+      setAccess(payload);
+      return payload;
+    } catch {
+      setAccess(null);
+      return null;
+    }
+  }, []);
 
   const loadAdmin = useCallback(async () => {
     setLoading(true);
@@ -84,7 +105,8 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/status', { cache: 'no-store' });
       if (response.status === 401) {
-        setAuth('denied');
+        const info = (await checkAccess()) ?? access;
+        setAuth(info?.allowed ? 'authed' : info?.loggedIn ? 'forbidden' : 'denied');
         setData(null);
         return;
       }
@@ -101,35 +123,29 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [access, checkAccess]);
 
   useEffect(() => {
-    void loadAdmin();
-  }, [loadAdmin]);
-
-  const handleLogin = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setMessage(null);
-    try {
-      const response = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      if (!response.ok) throw new Error(payload?.error || 'Invalid admin key.');
-      setPassword('');
-      await loadAdmin();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Login failed.');
-    }
-  };
+    void (async () => {
+      const info = await checkAccess();
+      if (info?.allowed) {
+        await loadAdmin();
+      } else if (info) {
+        setAuth(info.loggedIn ? 'forbidden' : 'denied');
+        setLoading(false);
+      } else {
+        setAuth('denied');
+        setLoading(false);
+      }
+    })();
+  }, [checkAccess, loadAdmin]);
 
   const handleLogout = async () => {
-    await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
-    setAuth('denied');
-    setData(null);
-    setMessage(null);
+    await Promise.all([
+      fetch('/api/admin/logout', { method: 'POST' }).catch(() => {}),
+      fetch('/api/auth/logout', { method: 'POST', redirect: 'manual' }).catch(() => {}),
+    ]);
+    window.location.href = '/';
   };
 
   const sendCommand = async (action: string, clusterId?: number) => {
@@ -188,37 +204,37 @@ export default function AdminPage() {
           )}
 
           {auth === 'denied' && (
-            <form
-              onSubmit={handleLogin}
-              className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8"
-            >
+            <div className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center">
               <p className="text-lg font-semibold">Admin access</p>
               <p className="mt-2 text-sm text-discord-lightGray">
-                This area is password protected. Enter the admin key to continue.
+                Log in with a whitelisted Discord account to open the admin panel.
               </p>
-
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Admin key"
-                autoComplete="current-password"
-                autoFocus
-                className="mt-5 w-full rounded-lg border border-discord-gray/40 bg-discord-dark px-4 py-2.5 text-sm text-discord-white outline-none transition placeholder:text-discord-lightGray focus:border-discord-blue"
-              />
-
-              {message && (
-                <p className="mt-3 text-xs text-discord-red">{message}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={password.length === 0}
-                className="mt-5 w-full rounded-lg bg-discord-blue px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-discord-blue/80 disabled:cursor-not-allowed disabled:opacity-50"
+              <a
+                href="/api/auth/discord?next=/admin"
+                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-discord-blue px-6 py-3 text-sm font-semibold text-white transition hover:bg-discord-blue/80"
               >
-                Unlock
-              </button>
-            </form>
+                Log in with Discord
+              </a>
+              {message && (
+                <p className="mt-4 text-xs text-discord-red">{message}</p>
+              )}
+            </div>
+          )}
+
+          {auth === 'forbidden' && (
+            <div className="mx-auto max-w-md rounded-2xl border border-discord-red/40 bg-discord-darker p-8 text-center">
+              <p className="text-lg font-semibold">Access denied</p>
+              <p className="mt-2 text-sm text-discord-lightGray">
+                {access?.username ? `You are logged in as ${access.username}, but ` : ''}this account is not whitelisted
+                for admin access.
+              </p>
+              <Link
+                href="/dashboard"
+                className="mt-6 inline-block rounded-lg border border-discord-gray/40 px-6 py-3 text-sm font-semibold text-discord-lighterGray transition hover:bg-discord-gray/40"
+              >
+                Go to dashboard
+              </Link>
+            </div>
           )}
 
           {auth === 'authed' && (

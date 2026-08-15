@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CONTROL_ACTIONS, enqueueControlCommand, hasAdminAccess } from '../../../../lib/admin';
+import { CONTROL_ACTIONS, enqueueControlCommand, hasAdminPanelAccess } from '../../../../lib/admin';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  if (!hasAdminAccess(request)) {
+  if (!hasAdminPanelAccess(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
