@@ -15,9 +15,15 @@ body {
   color: #ffffff;
 }
 
+/* Custom scrollbars (WebKit + Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #36393f #111214;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -26,9 +32,53 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: #36393f;
-  border-radius: 4px;
+  border-radius: 999px;
+  border: 2px solid #111214;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a4d52;
+  background: #5865f2;
+}
+
+::-webkit-scrollbar-corner {
+  background: #111214;
+}
+
+/* Custom text selection */
+::selection {
+  color: #ffffff;
+  background: #5865f2;
+}
+
+/* Custom dropdown / select menus */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 16 16'%3E%3Cpath fill='%2372767d' d='M8 11L2 5h12l-6 6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem auto;
+  padding-right: 2.25rem !important;
+}
+
+select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 16 16'%3E%3Cpath fill='%235865f2' d='M8 11L2 5h12l-6 6z'/%3E%3C/svg%3E");
+}
+
+select option {
+  color: #ffffff;
+  background-color: #202225;
+}
+
+select::-ms-expand {
+  display: none;
+}
+
+/* Accent color for checkboxes / radios / sliders */
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  accent-color: #5865f2;
 }
