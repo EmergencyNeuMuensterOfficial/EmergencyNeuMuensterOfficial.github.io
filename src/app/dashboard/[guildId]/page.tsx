@@ -171,7 +171,7 @@ export default function GuildDashboardPage({ params }: { params: { guildId: stri
                       value={prefix}
                       maxLength={4}
                       onChange={(event) => setPrefix(event.target.value)}
-                      className="mt-1.5 w-full rounded-lg border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue"
+                      className="mt-1.5 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue"
                     />
                   </label>
                   <label className="block">
@@ -179,7 +179,7 @@ export default function GuildDashboardPage({ params }: { params: { guildId: stri
                     <select
                       value={language}
                       onChange={(event) => setLanguage(event.target.value)}
-                      className="mt-1.5 w-full rounded-lg border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue"
+                      className="discord-select mt-1.5 w-full"
                     >
                       {LANGUAGES.map((lang) => (
                         <option key={lang.code} value={lang.code}>

@@ -82,3 +82,33 @@ input[type='radio'],
 input[type='range'] {
   accent-color: #5865f2;
 }
+
+/* Rounded custom dropdown control */
+@layer components {
+  .discord-select {
+    border-radius: 1rem;
+    border: 1px solid rgba(54, 57, 63, 0.55);
+    background-color: #202225;
+    padding: 0.625rem 2.25rem 0.625rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #ffffff;
+    outline: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .discord-select:hover {
+    border-color: rgba(54, 57, 63, 0.95);
+    background-color: #292b2f;
+  }
+
+  .discord-select:focus {
+    border-color: #5865f2;
+    background-color: #22242a;
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.3);
+  }
+}

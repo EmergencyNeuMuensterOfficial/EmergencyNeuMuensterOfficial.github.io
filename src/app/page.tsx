@@ -44,28 +44,67 @@ export default function HomePage() {
             </div>
           </div>
 
-          <section id="features" className="mt-16 w-full text-left">
-            <h2 className="text-center text-2xl font-bold">What is OnboardX?</h2>
-            <div className="mt-6 space-y-4">
+          <section id="features" className="mt-16 w-full">
+            <h2 className="text-center text-2xl font-bold">Features</h2>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-discord-gray/30 bg-discord-dark p-6">
-                <p className="font-semibold text-discord-blue">Automated welcome</p>
-                <p className="mt-1 text-sm text-discord-lighterGray">
-                  OnboardX automatically welcomes every new member with customizable messages and roles — no manual work.
+                <p className="flex items-center gap-2.5 font-semibold text-discord-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-discord-blue" />
+                  Automated Onboarding
+                </p>
+                <p className="mt-2 text-sm text-discord-lighterGray">
+                  Custom welcome messages, verification steps and auto-roles get new members set up in minutes — no manual work.
                 </p>
               </div>
               <div className="rounded-2xl border border-discord-gray/30 bg-discord-dark p-6">
-                <p className="font-semibold text-discord-blue">No external APIs</p>
-                <p className="mt-1 text-sm text-discord-lighterGray">
-                  Self-hosted and lightweight. No embedded panels or third-party services required.
+                <p className="flex items-center gap-2.5 font-semibold text-discord-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-discord-red" />
+                  Verification &amp; Security
+                </p>
+                <p className="mt-2 text-sm text-discord-lighterGray">
+                  Math or image captcha verification, anti-spam, honeypots and security profiles keep raids and bots out.
                 </p>
               </div>
               <div className="rounded-2xl border border-discord-gray/30 bg-discord-dark p-6">
-                <p className="font-semibold text-discord-blue">Live sharding insights</p>
-                <p className="mt-1 text-sm text-discord-lighterGray">
-                  Watch cluster, shard and gateway health in real time on the status page.
+                <p className="flex items-center gap-2.5 font-semibold text-discord-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-discord-yellow" />
+                  Moderation Suite
+                </p>
+                <p className="mt-2 text-sm text-discord-lighterGray">
+                  Warns, timeouts, purging, bans and full moderation case history with optional log channels.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-discord-gray/30 bg-discord-dark p-6">
+                <p className="flex items-center gap-2.5 font-semibold text-discord-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-discord-green" />
+                  Leveling &amp; XP
+                </p>
+                <p className="mt-2 text-sm text-discord-lighterGray">
+                  XP rewards, rank cards, leaderboards and automatic level roles keep your community engaged.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-discord-gray/30 bg-discord-dark p-6">
+                <p className="flex items-center gap-2.5 font-semibold text-discord-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-discord-purple" />
+                  Giveaways, Polls &amp; Events
+                </p>
+                <p className="mt-2 text-sm text-discord-lighterGray">
+                  Run giveaways, polls and RSVP events to keep activity flowing inside your server.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-discord-gray/30 bg-discord-dark p-6">
+                <p className="flex items-center gap-2.5 font-semibold text-discord-white">
+                  <span className="h-2.5 w-2.5 rounded-full bg-discord-lightGray" />
+                  Tickets, Forms &amp; AFK
+                </p>
+                <p className="mt-2 text-sm text-discord-lighterGray">
+                  Ticket threads, application forms, temp roles, invite tracking and AFK status — all in one place.
                 </p>
               </div>
             </div>
+            <p className="mt-6 text-center text-sm text-discord-lightGray">
+              Self-hosted, lightweight and free of third-party API dependencies.
+            </p>
           </section>
 
           <footer className="mt-16 w-full border-t border-discord-gray/30 pt-6 text-xs text-discord-lightGray">

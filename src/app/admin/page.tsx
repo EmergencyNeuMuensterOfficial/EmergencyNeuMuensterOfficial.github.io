@@ -329,10 +329,10 @@ export default function AdminPage() {
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <select
-                    value={selectedCluster}
-                    onChange={(event) => setSelectedCluster(event.target.value)}
-                    className="rounded-lg border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none focus:border-discord-blue"
-                  >
+                      value={selectedCluster}
+                      onChange={(event) => setSelectedCluster(event.target.value)}
+                      className="discord-select"
+                    >
                     <option value="">Select a cluster…</option>
                     {clusters.map((cluster) => (
                       <option key={String(cluster.id)} value={String(cluster.clusterId)}>
