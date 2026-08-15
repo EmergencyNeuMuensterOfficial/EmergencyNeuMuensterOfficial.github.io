@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StatusPayload } from '../../lib/status';
 import { Sidebar } from '../../components/Sidebar';
 
@@ -86,14 +86,17 @@ export default function AdminPage() {
   const [selectedCluster, setSelectedCluster] = useState<string>('');
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [expandedCluster, setExpandedCluster] = useState<number | null>(null);
+  const accessRef = useRef<AccessInfo | null>(null);
 
   const checkAccess = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/access', { cache: 'no-store' });
       const payload = (await response.json()) as AccessInfo;
+      accessRef.current = payload;
       setAccess(payload);
       return payload;
     } catch {
+      accessRef.current = null;
       setAccess(null);
       return null;
     }
@@ -105,7 +108,7 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/status', { cache: 'no-store' });
       if (response.status === 401) {
-        const info = (await checkAccess()) ?? access;
+        const info = accessRef.current;
         setAuth(info?.allowed ? 'authed' : info?.loggedIn ? 'forbidden' : 'denied');
         setData(null);
         return;
@@ -123,11 +126,13 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [access, checkAccess]);
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       const info = await checkAccess();
+      if (cancelled) return;
       if (info?.allowed) {
         await loadAdmin();
       } else if (info) {
@@ -138,6 +143,9 @@ export default function AdminPage() {
         setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [checkAccess, loadAdmin]);
 
   const handleLogout = async () => {
