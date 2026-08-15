@@ -22,6 +22,23 @@ export interface DiscordGatewayInfo {
   totalShards: number;
 }
 
+export interface GuildPlacement {
+  id: string;
+  name: string;
+  shardId: number | null;
+  memberCount: number | null;
+}
+
+export interface ShardSubInfo {
+  shardId: number;
+  state: string;
+  statusCode: number | null;
+  ready: boolean;
+  ping: number;
+  sequence: number | null;
+  guilds: number;
+}
+
 export interface ClusterStatusRecord {
   id: string | number;
   clusterId: number;
@@ -32,6 +49,7 @@ export interface ClusterStatusRecord {
   stale: boolean;
   shardCount: number;
   shards: number[];
+  shardStates: ShardSubInfo[];
   guilds: number;
   users: number;
   channels: number;
@@ -40,6 +58,7 @@ export interface ClusterStatusRecord {
   memoryMB: number;
   wsStatus: string;
   wsStatusLabel: string;
+  guildPlacements: GuildPlacement[];
   lastHeartbeatAt: string | null;
   expiresAt: string | null;
 }
@@ -58,6 +77,7 @@ export interface ShardStatusRecord {
   users: number;
   channels: number;
   sequence: number | null;
+  guildsList: GuildPlacement[];
   lastHeartbeatAt: string | null;
   expiresAt: string | null;
 }
@@ -124,6 +144,35 @@ function numberValue(value: unknown, fallback = 0): number {
 
 function textValue(value: unknown, fallback = 'unknown'): string {
   return typeof value === 'string' && value.length > 0 ? value : fallback;
+}
+
+function normalizeGuildPlacements(value: unknown): GuildPlacement[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null)
+    .map((entry) => ({
+      id: typeof entry.id === 'string' || typeof entry.id === 'number' ? String(entry.id) : '',
+      name: textValue(entry.name, 'Unknown Server'),
+      shardId: entry.shardId == null ? null : numberValue(entry.shardId),
+      memberCount: entry.memberCount == null ? null : numberValue(entry.memberCount),
+    }))
+    .filter((entry) => entry.id.length > 0);
+}
+
+function normalizeShardStates(value: unknown): ShardSubInfo[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null)
+    .map((entry) => ({
+      shardId: numberValue(entry.shardId, -1),
+      state: textValue(entry.state),
+      statusCode: entry.statusCode == null ? null : numberValue(entry.statusCode),
+      ready: entry.ready === true,
+      ping: numberValue(entry.ping, -1),
+      sequence: entry.sequence == null ? null : numberValue(entry.sequence),
+      guilds: Array.isArray(entry.guildsList) ? entry.guildsList.length : numberValue(entry.guilds),
+    }))
+    .filter((entry) => entry.shardId >= 0);
 }
 
 function defaultMaintenance(doc?: { maintenance?: Partial<MaintenanceInfo> }): MaintenanceInfo {
@@ -198,6 +247,7 @@ function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusReco
     stale,
     shardCount: numberValue(doc.shardCount, Array.isArray(doc.shards) ? doc.shards.length : 0),
     shards: Array.isArray(doc.shards) ? doc.shards.map((shard) => numberValue(shard)) : [],
+    shardStates: normalizeShardStates(doc.shardStates),
     guilds: numberValue(doc.guilds),
     users: numberValue(doc.users),
     channels: numberValue(doc.channels),
@@ -206,6 +256,7 @@ function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusReco
     memoryMB: numberValue(doc.memoryMB),
     wsStatus: textValue(doc.wsStatus),
     wsStatusLabel: stale ? 'offline' : textValue(doc.wsStatusLabel, textValue(doc.wsStatus)),
+    guildPlacements: normalizeGuildPlacements(doc.guildPlacements),
     lastHeartbeatAt: (doc.lastHeartbeatAt as string | undefined) ?? null,
     expiresAt: (doc.expiresAt as string | undefined) ?? null,
   };
@@ -230,6 +281,7 @@ function normalizeShardStatus(doc: Record<string, unknown>): ShardStatusRecord {
     users: numberValue(doc.users),
     channels: numberValue(doc.channels),
     sequence: doc.sequence == null ? null : numberValue(doc.sequence),
+    guildsList: normalizeGuildPlacements(doc.guildsList),
     lastHeartbeatAt: (doc.lastHeartbeatAt as string | undefined) ?? null,
     expiresAt: (doc.expiresAt as string | undefined) ?? null,
   };
