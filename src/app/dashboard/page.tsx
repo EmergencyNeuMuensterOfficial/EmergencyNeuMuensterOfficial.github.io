@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '../../components/Sidebar';
+import { Reveal } from '../../components/Reveal';
 
 interface GuildCard {
   id: string;
@@ -70,22 +71,25 @@ function DashboardInner() {
     <div className="min-h-screen bg-discord-darkest text-white">
       <Sidebar />
       <div className="ml-60">
-        <div className="border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4">
+        <div className="border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4 animate-fade-in-up">
           <h1 className="text-sm font-bold leading-tight">Dashboard</h1>
           <p className="text-xs text-discord-lightGray">Manage your servers</p>
         </div>
 
         <main className="mx-auto max-w-4xl px-6 py-10">
           {loginError && LOGIN_ERRORS[loginError] && (
-            <p className="mb-6 rounded-lg border border-discord-red/40 bg-discord-red/10 px-4 py-3 text-sm text-discord-red">
+            <Reveal>
+            <p className="mb-6 rounded-lg border border-discord-red/40 bg-discord-red/10 px-4 py-3 text-sm text-discord-red animate-fade-in-up">
               {LOGIN_ERRORS[loginError]}
             </p>
+            </Reveal>
           )}
 
           {loading && <p className="text-sm text-discord-lightGray">Checking your Discord session…</p>}
 
           {!loading && !data && !error && (
-            <div className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center">
+            <Reveal>
+            <div className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center animate-fade-in-up">
               <p className="text-lg font-semibold">Log in with Discord</p>
               <p className="mt-2 text-sm text-discord-lightGray">
                 You must be a server owner or administrator of a server where OnboardX is present to manage it.
@@ -97,10 +101,12 @@ function DashboardInner() {
                 Login with Discord
               </a>
             </div>
+            </Reveal>
           )}
 
           {error && (
-            <div className="mx-auto max-w-md rounded-2xl border border-discord-red/40 bg-discord-red/10 p-8 text-center">
+            <Reveal>
+            <div className="mx-auto max-w-md rounded-2xl border border-discord-red/40 bg-discord-red/10 p-8 text-center animate-fade-in-up">
               <p className="text-sm text-discord-red">{error}</p>
               {error.includes('expired') ? (
                 <a
@@ -118,11 +124,12 @@ function DashboardInner() {
                 </button>
               )}
             </div>
+            </Reveal>
           )}
 
           {data && (
             <>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex items-center justify-between animate-fade-in-up">
                 <div>
                   <h2 className="text-lg font-bold">Your servers</h2>
                   <p className="mt-1 text-sm text-discord-lightGray">
@@ -149,18 +156,18 @@ function DashboardInner() {
 
               {data.guilds && data.guilds.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {data.guilds.map((guild) => (
+                  {data.guilds.map((guild, index) => (
+                    <Reveal key={guild.id} delay={(index % 3) * 80}>
                     <Link
-                      key={guild.id}
                       href={`/dashboard/${guild.id}`}
-                      className="group flex items-center gap-3 rounded-2xl border border-discord-gray/20 bg-discord-darker p-4 transition hover:border-discord-blue/50 hover:bg-discord-dark"
+                      className="group flex animate-fade-in-up items-center gap-3 rounded-2xl border border-discord-gray/20 bg-discord-darker p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-discord-blue/50 hover:bg-discord-dark hover:shadow-lg hover:shadow-discord-blue/10"
                     >
                       {guild.iconUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={guild.iconUrl}
                           alt=""
-                          className="h-12 w-12 shrink-0 rounded-full"
+                          className="h-12 w-12 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-110"
                         />
                       ) : (
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-discord-gray text-base font-bold">
@@ -174,10 +181,12 @@ function DashboardInner() {
                         </p>
                       </div>
                     </Link>
+                    </Reveal>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-discord-gray/20 bg-discord-darker px-6 py-10 text-center">
+                <Reveal>
+                <div className="rounded-2xl border border-discord-gray/20 bg-discord-darker px-6 py-10 text-center animate-fade-in-up">
                   <p className="text-sm text-discord-lightGray">
                     No manageable servers found. OnboardX is not in any of your servers.
                   </p>
@@ -188,6 +197,7 @@ function DashboardInner() {
                     Add OnboardX to a server
                   </a>
                 </div>
+                </Reveal>
               )}
             </>
           )}

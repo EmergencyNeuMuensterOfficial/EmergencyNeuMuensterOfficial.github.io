@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StatusPayload } from '../../lib/status';
 import { Sidebar } from '../../components/Sidebar';
+import { Reveal } from '../../components/Reveal';
 
 interface ControlCommand {
   id: string;
@@ -191,7 +192,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-discord-darkest text-white">
       <Sidebar />
       <div className="ml-60">
-        <div className="flex items-center justify-between border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4 animate-fade-in-up">
           <div>
             <h1 className="text-sm font-bold leading-tight">Admin</h1>
             <p className="text-xs text-discord-lightGray">Cluster control &amp; bot maintenance</p>
@@ -212,7 +213,7 @@ export default function AdminPage() {
           )}
 
           {auth === 'denied' && (
-            <div className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center">
+            <div className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center animate-fade-in-up">
               <p className="text-lg font-semibold">Admin access</p>
               <p className="mt-2 text-sm text-discord-lightGray">
                 Log in with a whitelisted Discord account to open the admin panel.
@@ -230,7 +231,7 @@ export default function AdminPage() {
           )}
 
           {auth === 'forbidden' && (
-            <div className="mx-auto max-w-md rounded-2xl border border-discord-red/40 bg-discord-darker p-8 text-center">
+            <div className="mx-auto max-w-md rounded-2xl border border-discord-red/40 bg-discord-darker p-8 text-center animate-fade-in-up">
               <p className="text-lg font-semibold">Access denied</p>
               <p className="mt-2 text-sm text-discord-lightGray">
                 {access?.username ? `You are logged in as ${access.username}, but ` : ''}this account is not whitelisted
@@ -262,7 +263,8 @@ export default function AdminPage() {
               {loading && <p className="text-sm text-discord-lightGray">Refreshing…</p>}
 
               {/* Overview */}
-              <section className="rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+              <Reveal>
+              <section className="animate-fade-in-up rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-bold">Bot Overview</h2>
@@ -309,9 +311,11 @@ export default function AdminPage() {
                   </div>
                 </div>
               </section>
+              </Reveal>
 
               {/* Maintenance */}
-              <section className="mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+              <Reveal delay={80}>
+              <section className="animate-fade-in-up mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
                 <h3 className="text-sm font-semibold text-discord-lighterGray">Maintenance Mode</h3>
                 <p className="mt-1 text-sm text-discord-lightGray">
                   {maintenance
@@ -336,9 +340,11 @@ export default function AdminPage() {
                       : 'Enable Maintenance'}
                 </button>
               </section>
+              </Reveal>
 
               {/* Global actions */}
-              <section className="mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+              <Reveal delay={140}>
+              <section className="animate-fade-in-up mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
                 <h3 className="text-sm font-semibold text-discord-lighterGray">Global Actions</h3>
                 <p className="mt-1 text-sm text-discord-lightGray">
                   These commands are queued and executed by the cluster manager.
@@ -347,22 +353,24 @@ export default function AdminPage() {
                   <button
                     onClick={() => void sendCommand('restart_all')}
                     disabled={busyAction !== null}
-                    className="rounded-lg border border-discord-yellow/40 bg-discord-yellow/10 px-5 py-2 text-sm font-semibold text-discord-yellow transition hover:bg-discord-yellow/20 disabled:opacity-50"
+                    className="rounded-lg border border-discord-yellow/40 bg-discord-yellow/10 px-5 py-2 text-sm font-semibold text-discord-yellow transition hover:-translate-y-0.5 hover:bg-discord-yellow/20 disabled:opacity-50"
                   >
                     {busyAction === 'restart_all' ? 'Sending…' : 'Restart All Clusters'}
                   </button>
                   <button
                     onClick={() => void sendCommand('shutdown_all')}
                     disabled={busyAction !== null}
-                    className="rounded-lg border border-discord-red/40 bg-discord-red/10 px-5 py-2 text-sm font-semibold text-discord-red transition hover:bg-discord-red/20 disabled:opacity-50"
+                    className="rounded-lg border border-discord-red/40 bg-discord-red/10 px-5 py-2 text-sm font-semibold text-discord-red transition hover:-translate-y-0.5 hover:bg-discord-red/20 disabled:opacity-50"
                   >
                     {busyAction === 'shutdown_all' ? 'Sending…' : 'Shutdown All Clusters'}
                   </button>
                 </div>
               </section>
+              </Reveal>
 
               {/* Per-cluster actions */}
-              <section className="mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+              <Reveal delay={200}>
+              <section className="animate-fade-in-up mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
                 <h3 className="text-sm font-semibold text-discord-lighterGray">Cluster Actions</h3>
                 <p className="mt-1 text-sm text-discord-lightGray">Target a single cluster by ID.</p>
 
@@ -399,9 +407,11 @@ export default function AdminPage() {
                   </button>
                 </div>
               </section>
+              </Reveal>
 
               {/* Cluster list */}
-              <section className="mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
+              <Reveal delay={260}>
+              <section className="animate-fade-in-up mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
                 <div className="border-b border-discord-gray/20 px-4 py-3">
                   <h3 className="text-sm font-semibold text-discord-lighterGray">Clusters</h3>
                   <p className="mt-1 text-xs text-discord-lightGray">
@@ -552,9 +562,11 @@ export default function AdminPage() {
                   </div>
                 )}
               </section>
+              </Reveal>
 
               {/* Command history */}
-              <section className="mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
+              <Reveal delay={320}>
+              <section className="animate-fade-in-up mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
                 <div className="border-b border-discord-gray/20 px-4 py-3">
                   <h3 className="text-sm font-semibold text-discord-lighterGray">Recent Control Commands</h3>
                 </div>
@@ -604,6 +616,7 @@ export default function AdminPage() {
                   </div>
                 )}
               </section>
+              </Reveal>
             </>
           )}
         </main>

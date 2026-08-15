@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { StatusPayload } from '../../lib/status';
 import { Sidebar } from '../../components/Sidebar';
+import { Reveal } from '../../components/Reveal';
 
 function formatUptime(seconds: number) {
   if (!seconds || seconds <= 0) return '—';
@@ -144,7 +145,7 @@ export default function StatusPage() {
     <div className="min-h-screen bg-discord-darkest text-white">
       <Sidebar />
       <div className="ml-60">
-        <div className="flex items-center justify-between border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4 animate-fade-in-up">
           <div>
             <h1 className="text-sm font-bold leading-tight">Status</h1>
             <p className="text-xs text-discord-lightGray">Live cluster, shard &amp; gateway health</p>
@@ -161,7 +162,8 @@ export default function StatusPage() {
         </div>
 
         <main className="mx-auto max-w-5xl px-6 py-10">
-        <section className="rounded-2xl border border-discord-gray/20 bg-discord-darker p-6 sm:p-8">
+        <Reveal>
+        <section className="animate-fade-in-up rounded-2xl border border-discord-gray/20 bg-discord-darker p-6 sm:p-8">
           <div className="flex items-center gap-3">
             <span className={`h-3 w-3 rounded-full ${STATE_META[state].dot} ${status ? '' : 'animate-pulse'}`} />
             <h2 className={`text-lg font-bold sm:text-xl ${STATE_META[state].badge.split(' ')[0]}`}>
@@ -194,17 +196,21 @@ export default function StatusPage() {
             </p>
           )}
         </section>
+        </Reveal>
 
         {status?.maintenance.enabled && status.maintenance.estimatedEndAt && (
-          <section className="mt-6 rounded-2xl border border-discord-yellow/40 bg-discord-yellow/5 p-5">
+          <Reveal delay={80}>
+          <section className="animate-fade-in-up mt-6 rounded-2xl border border-discord-yellow/40 bg-discord-yellow/5 p-5">
             <p className="text-sm text-discord-yellow">
               Estimated completion: <span className="font-semibold">{formatDate(status.maintenance.estimatedEndAt)}</span>
               <span className="ml-2 text-discord-lightGray">({relativeTime(status.maintenance.estimatedEndAt)})</span>
             </p>
           </section>
+          </Reveal>
         )}
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
+        <Reveal delay={120}>
+        <section className="animate-fade-in-up mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
           <h3 className="border-b border-discord-gray/20 px-4 py-3 text-sm font-semibold text-discord-lighterGray">
             Services
           </h3>
@@ -229,8 +235,10 @@ export default function StatusPage() {
             detail="this page"
           />
         </section>
+        </Reveal>
 
-        <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Reveal delay={160}>
+        <section className="animate-fade-in-up mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard label="Shards" value={status ? `${status.readyShards}/${status.shardCount}` : '—'} />
           <StatCard
             label="Avg Ping"
@@ -241,8 +249,10 @@ export default function StatusPage() {
           <StatCard label="Last Snapshot" value={relativeTime(status?.lastSnapshotAt ?? null)} />
           <StatCard label="Auto-refresh" value="30s" />
         </section>
+        </Reveal>
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
+        <Reveal delay={200}>
+        <section className="animate-fade-in-up mt-6 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
           <div className="flex items-center justify-between border-b border-discord-gray/20 px-4 py-3">
             <h3 className="text-sm font-semibold text-discord-lighterGray">Host Details</h3>
             {status?.hostDetails && (
@@ -268,9 +278,11 @@ export default function StatusPage() {
             <p className="px-4 py-6 text-sm text-discord-lightGray">No system status record found in the database.</p>
           )}
         </section>
+        </Reveal>
 
         {status && (status.clusters.length > 0 || status.shards.length > 0) && (
-          <section className="mt-6">
+          <Reveal delay={240}>
+          <section className="animate-fade-in-up mt-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-discord-lighterGray">Clusters</h3>
               <span className="text-xs text-discord-lightGray">
@@ -392,6 +404,7 @@ export default function StatusPage() {
               </div>
             )}
           </section>
+          </Reveal>
         )}
 
         {status?.stale && !status.isOnline && (
@@ -400,7 +413,7 @@ export default function StatusPage() {
           </p>
         )}
 
-        <footer className="mt-10 border-t border-discord-gray/20 pt-6 text-center text-xs text-discord-lightGray">
+        <footer className="mt-10 animate-fade-in-up border-t border-discord-gray/20 pt-6 text-center text-xs text-discord-lightGray">
           <p>
             This status page reads directly from the OnboardX MongoDB database — it does not depend on the bot&apos;s API.
           </p>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Sidebar } from '../../../components/Sidebar';
+import { Reveal } from '../../../components/Reveal';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -129,7 +130,7 @@ export default function GuildDashboardPage({ params }: { params: { guildId: stri
     <div className="min-h-screen bg-discord-darkest text-white">
       <Sidebar />
       <div className="ml-60">
-        <div className="flex items-center justify-between border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4 animate-fade-in-up">
           <div>
             <Link href="/dashboard" className="text-xs text-discord-blue transition hover:underline">
               ← Dashboard
@@ -162,7 +163,8 @@ export default function GuildDashboardPage({ params }: { params: { guildId: stri
             <p className="text-sm text-discord-lightGray">Loading settings…</p>
           ) : (
             <>
-              <section className="rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+              <Reveal>
+              <section className="animate-fade-in-up rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
                 <h2 className="text-sm font-semibold text-discord-lighterGray">General</h2>
                 <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <label className="block">
@@ -190,8 +192,10 @@ export default function GuildDashboardPage({ params }: { params: { guildId: stri
                   </label>
                 </div>
               </section>
+              </Reveal>
 
-              <section className="mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+              <Reveal delay={100}>
+              <section className="animate-fade-in-up mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
                 <h2 className="text-sm font-semibold text-discord-lighterGray">Modules</h2>
                 <p className="mt-1 text-xs text-discord-lightGray">
                   Enable or disable features for this server.
@@ -230,6 +234,7 @@ export default function GuildDashboardPage({ params }: { params: { guildId: stri
                   })}
                 </div>
               </section>
+              </Reveal>
             </>
           )}
         </main>
