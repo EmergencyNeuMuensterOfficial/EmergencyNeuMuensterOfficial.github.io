@@ -98,7 +98,7 @@ export default function HomePage() {
                   Tickets, Forms &amp; AFK
                 </p>
                 <p className="mt-2 text-sm text-discord-lighterGray">
-                  Ticket threads, application forms, temp roles, invite tracking and AFK status — all in one place.
+                  Advanced tickets with categories, intake forms, priorities, claim/assign, canned responses, ratings, SLA &amp; inactivity automation — plus forms, temp roles and AFK.
                 </p>
               </div>
             </div>
