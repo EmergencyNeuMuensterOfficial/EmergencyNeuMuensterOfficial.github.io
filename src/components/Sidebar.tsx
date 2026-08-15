@@ -16,8 +16,8 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-discord-gray/20 bg-discord-darker">
       <Link href="/" className="flex items-center gap-3 border-b border-discord-gray/20 px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-discord-blue font-bold">
-          OX
+        <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg">
+          <img src="/icon" alt="OnboardX" className="h-9 w-9 object-contain" />
         </div>
         <div>
           <p className="text-sm font-bold leading-tight text-discord-white">OnboardX</p>
