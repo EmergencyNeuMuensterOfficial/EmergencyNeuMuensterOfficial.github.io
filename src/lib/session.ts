@@ -8,6 +8,10 @@ export interface SessionData {
   userId: string;
   username: string;
   avatar: string | null;
+  globalName: string | null;
+  discriminator: string;
+  banner: string | null;
+  accentColor: number | null;
   accessToken: string;
 }
 

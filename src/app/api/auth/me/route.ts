@@ -10,6 +10,14 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.json({
     authed: true,
-    user: { id: session.userId, username: session.username, avatar: session.avatar },
+    user: {
+      id: session.userId,
+      username: session.username,
+      avatar: session.avatar,
+      globalName: session.globalName,
+      discriminator: session.discriminator,
+      banner: session.banner,
+      accentColor: session.accentColor,
+    },
   });
 }

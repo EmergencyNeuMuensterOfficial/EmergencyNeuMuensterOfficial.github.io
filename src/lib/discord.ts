@@ -66,6 +66,8 @@ export interface DiscordUser {
   global_name: string | null;
   discriminator: string;
   avatar: string | null;
+  banner: string | null;
+  accent_color: number | null;
 }
 
 export async function fetchDiscordUser(accessToken: string): Promise<DiscordUser> {

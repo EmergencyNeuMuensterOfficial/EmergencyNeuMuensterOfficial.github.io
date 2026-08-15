@@ -34,6 +34,10 @@ export async function GET(request: NextRequest) {
       userId: user.id,
       username: user.username,
       avatar: user.avatar,
+      globalName: user.global_name ?? null,
+      discriminator: user.discriminator ?? '0',
+      banner: user.banner ?? null,
+      accentColor: typeof user.accent_color === 'number' ? user.accent_color : null,
       accessToken: token.access_token,
     });
 

@@ -112,3 +112,85 @@ input[type='range'] {
     box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.3);
   }
 }
+
+/* ── Custom keyframe animations ─────────────────────────────────────────── */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 24px 4px rgba(88, 101, 242, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 44px 12px rgba(88, 101, 242, 0.55);
+  }
+}
+
+@keyframes gradient-x {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@layer utilities {
+  .animate-float-y {
+    animation: float-y 6s ease-in-out infinite;
+  }
+  .animate-glow {
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+  .animate-gradient-x {
+    background-size: 200% 200%;
+    animation: gradient-x 6s ease infinite;
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.7s ease-out both;
+  }
+  .animate-spin-slow {
+    animation: float-spin-slow 24s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-y,
+  .animate-glow,
+  .animate-gradient-x,
+  .animate-fade-in-up,
+  .animate-spin-slow {
+    animation: none;
+  }
+}
