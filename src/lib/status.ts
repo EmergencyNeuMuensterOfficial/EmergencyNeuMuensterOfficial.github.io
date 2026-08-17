@@ -252,7 +252,7 @@ function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusReco
     users: numberValue(doc.users),
     channels: numberValue(doc.channels),
     ping: numberValue(doc.ping, -1),
-    uptime: numberValue(doc.uptime),
+    uptime: Math.max(0, Math.floor(numberValue(doc.uptime) / 1000)),
     memoryMB: numberValue(doc.memoryMB),
     wsStatus: textValue(doc.wsStatus),
     wsStatusLabel: stale ? 'offline' : textValue(doc.wsStatusLabel, textValue(doc.wsStatus)),
@@ -304,6 +304,9 @@ export async function fetchBotStatus(): Promise<StatusPayload> {
   const freshCluster = clusters.find((cluster) => !cluster.stale);
   const isOnline = system.online || clusters.some((cluster) => cluster.online) || shards.some((shard) => shard.online);
 
+  const totalClusterMemoryMB = clusters.reduce((total, cluster) => total + (cluster.memoryMB > 0 ? cluster.memoryMB : 0), 0);
+  const botMemoryMB = totalClusterMemoryMB > 0 ? totalClusterMemoryMB : system.memoryMB;
+
   const lastUpdated =
     parseDate(system.lastSnapshotAt)
     ?? parseDate(freshCluster?.lastHeartbeatAt)
@@ -321,7 +324,7 @@ export async function fetchBotStatus(): Promise<StatusPayload> {
     state: displayState,
     stale: system.stale && !clusters.some((cluster) => !cluster.stale) && !shards.some((shard) => !shard.stale),
     uptime: freshCluster?.uptime ?? 0,
-    memoryUsage: { rss: system.memoryMB, heapTotal: 0, heapUsed: system.memoryMB, external: 0 },
+    memoryUsage: { rss: botMemoryMB, heapTotal: 0, heapUsed: botMemoryMB, external: 0 },
     shardCount: system.totalShards || shards.length,
     readyShards: system.readyShards || shards.filter((shard) => shard.ready).length,
     clusterCount: system.clusterCount || clusters.length,
