@@ -19,6 +19,16 @@ const FEATURES = [
     text: 'Math or image captcha verification, anti-spam, honeypots and security profiles keep raids and bots out.',
   },
   {
+    dot: 'bg-discord-red',
+    title: 'Raid Protection Suite',
+    text: 'Anti-nuke rolling-window protection, Enterprise alt-account detection and shared cross-server blocklists stop destructive raids and ban evaders.',
+  },
+  {
+    dot: 'bg-discord-blue',
+    title: 'Birthdays & Anniversaries',
+    text: 'Members can set their birthday once; the bot announces it every year in the server timezone (DST-safe) with an optional 24h anniversary role.',
+  },
+  {
     dot: 'bg-discord-yellow',
     title: 'Moderation Suite',
     text: 'Warns, timeouts, purging, bans and full moderation case history with optional log channels.',
