@@ -14,9 +14,11 @@ interface GuildCard {
 }
 
 interface GuildsResponse {
-  user?: { id: string; username: string; avatar: string | null };
-  guilds?: GuildCard[];
-  missingBotToken?: boolean;
+  data?: {
+    user?: { id: string; username: string; avatar: string | null };
+    guilds?: GuildCard[];
+    missingBotToken?: boolean;
+  };
   error?: string;
   code?: string;
 }
@@ -136,7 +138,7 @@ function DashboardInner() {
                     Servers where you have admin rights and OnboardX is present.
                   </p>
                 </div>
-                {data.user && (
+                {data.data?.user && (
                   <form action="/api/auth/logout" method="post">
                     <button
                       type="submit"
@@ -148,15 +150,15 @@ function DashboardInner() {
                 )}
               </div>
 
-              {data.missingBotToken && (
+              {data.data?.missingBotToken && (
                 <p className="mb-6 rounded-lg border border-discord-yellow/40 bg-discord-yellow/10 px-4 py-3 text-sm text-discord-yellow">
                   Bot presence could not be verified (DISCORD_TOKEN not configured), so all your admin servers are shown.
                 </p>
               )}
 
-              {data.guilds && data.guilds.length > 0 ? (
+              {data.data?.guilds && data.data.guilds.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {data.guilds.map((guild, index) => (
+                  {data.data.guilds.map((guild, index) => (
                     <Reveal key={guild.id} delay={(index % 3) * 80}>
                     <Link
                       href={`/dashboard/${guild.id}`}
