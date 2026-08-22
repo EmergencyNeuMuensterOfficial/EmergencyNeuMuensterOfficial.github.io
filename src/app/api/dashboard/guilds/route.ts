@@ -24,14 +24,16 @@ export async function GET(request: NextRequest) {
     botGuildIds = new Set();
   }
 
-  const manageable = adminGuilds
-    .filter((guild) => botGuildIds.size === 0 || botGuildIds.has(guild.id))
-    .map((guild) => ({ ...guild, iconUrl: guildIconUrl(guild) }));
+  // If we have bot guild data, only show guilds the bot is in.
+  // If we have no bot data (missing token), show all admin guilds.
+  const manageable = botGuildIds.size > 0
+    ? adminGuilds.filter((guild) => botGuildIds.has(guild.id))
+    : adminGuilds;
 
   return NextResponse.json({
     data: {
       user: { id: session.userId, username: session.username, avatar: session.avatar },
-      guilds: manageable,
+      guilds: manageable.map((guild) => ({ ...guild, iconUrl: guildIconUrl(guild) })),
       missingBotToken: botGuildIds.size === 0,
     },
   });

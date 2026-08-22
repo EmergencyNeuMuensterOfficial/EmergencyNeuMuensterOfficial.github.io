@@ -10,11 +10,9 @@ export const DASHBOARD_SCOPE = 'identify guilds';
 const ADMIN_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20);
 
 export function guildHasAdminPermission(permissions: unknown): boolean {
-  if (typeof permissions !== 'string' && typeof permissions !== 'bigint' && typeof permissions !== 'number') {
-    return false;
-  }
+  if (permissions == null) return false;
   try {
-    const bits = BigInt(permissions);
+    const bits = BigInt(String(permissions));
     return (bits & ADMIN_PERMISSION_BITS) !== BigInt(0);
   } catch {
     return false;
