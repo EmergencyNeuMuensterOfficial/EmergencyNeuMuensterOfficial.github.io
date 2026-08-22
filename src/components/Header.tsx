@@ -351,7 +351,7 @@ export function PageFrame({ children }: { children: React.ReactNode }) {
           home
             ? ""
             : pinnedFooter
-              ? `px-4 pb-24 pt-24 md:px-6 ${serverDash ? "pl-20 lg:pl-64" : ""}`
+              ? `px-4 pb-24 pt-24 md:px-6 ${serverDash ? "pl-28 lg:pl-72" : ""}`
               : "px-4 pb-10 pt-24 md:px-6"
         }
       >

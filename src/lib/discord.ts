@@ -6,8 +6,11 @@ export const DISCORD_BOT_TOKEN = process.env.DISCORD_TOKEN || '';
 
 export const DASHBOARD_SCOPE = 'identify guilds';
 
-// ADMINISTRATOR (0x8) or MANAGE_GUILD (0x20)
-const ADMIN_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20);
+// Admin-like permission bits:
+// ADMINISTRATOR (0x8), MANAGE_GUILD (0x20), MANAGE_CHANNELS (0x10),
+// MANAGE_ROLES (0x1000000), MANAGE_WEBHOOKS (0x20000000), BAN_MEMBERS (0x4),
+// KICK_MEMBERS (0x2)
+const ADMIN_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20) | BigInt(0x10) | BigInt(0x1000000) | BigInt(0x20000000) | BigInt(0x4) | BigInt(0x2);
 
 export function guildHasAdminPermission(permissions: unknown): boolean {
   if (permissions == null) return false;
