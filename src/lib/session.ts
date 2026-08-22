@@ -13,6 +13,7 @@ export interface SessionData {
   banner: string | null;
   accentColor: number | null;
   accessToken: string;
+  refreshToken: string;
 }
 
 function base64UrlEncode(value: string): string {

@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, getDiscordGuild } from '../../../../../lib/auth';
 import { getGuildConfig, updateGuildConfig } from '../../../../../lib/mongo';
+import { COOKIE_NAME, createSessionToken } from '../../../../../lib/session';
+
+function withRefreshCookie(response: NextResponse, refreshedSession: { userId: string; username: string; avatar: string | null; globalName: string | null; discriminator: string; banner: string | null; accentColor: number | null; accessToken: string; refreshToken: string } | undefined): NextResponse {
+  if (!refreshedSession) return response;
+  response.cookies.set(COOKIE_NAME, createSessionToken(refreshedSession), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60,
+  });
+  return response;
+}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
@@ -9,26 +22,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const guild = await getDiscordGuild(session, guildId);
+  const { guild, refreshedSession } = await getDiscordGuild(session, guildId);
   if (!guild) {
-    return NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
+    const resp = NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
+    return withRefreshCookie(resp, refreshedSession);
   }
 
   const config = await getGuildConfig(guildId);
   if (!config) {
-    return NextResponse.json(
+    const resp = NextResponse.json(
       {
         error: 'No configuration exists yet for this server. Save a setting to create it.',
         data: { guildId, guild: { name: guild.name, icon: guild.icon } },
       },
       { status: 404 }
     );
+    return withRefreshCookie(resp, refreshedSession);
   }
 
   const { _id, ...safeConfig } = config;
-  return NextResponse.json({
+  const resp = NextResponse.json({
     data: { guild: { name: guild.name, icon: guild.icon }, config: safeConfig },
   });
+  return withRefreshCookie(resp, refreshedSession);
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ guildId: string }> }) {
@@ -38,9 +54,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const guild = await getDiscordGuild(session, guildId);
+  const { guild, refreshedSession } = await getDiscordGuild(session, guildId);
   if (!guild) {
-    return NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
+    const resp = NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
+    return withRefreshCookie(resp, refreshedSession);
   }
 
   let body: unknown;
@@ -64,7 +81,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const config = await getGuildConfig(guildId);
   const { _id, ...safeConfig } = config ?? {};
-  return NextResponse.json({ data: { config: safeConfig } });
+  const resp = NextResponse.json({ data: { config: safeConfig } });
+  return withRefreshCookie(resp, refreshedSession);
 }
 
 function sanitizeUpdates(body: unknown): Record<string, unknown> {

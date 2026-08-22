@@ -38,7 +38,15 @@ export function oauthAuthorizeUrl(origin: string, state: string): string {
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
 
-export async function exchangeCode(origin: string, code: string): Promise<{ access_token: string; token_type: string; expires_in: number; scope: string }> {
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+}
+
+export async function exchangeCode(origin: string, code: string): Promise<TokenResponse> {
   const body = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     client_secret: DISCORD_CLIENT_SECRET,
@@ -57,6 +65,28 @@ export async function exchangeCode(origin: string, code: string): Promise<{ acce
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new Error(`Discord token exchange failed (${response.status}): ${text}`);
+  }
+  return response.json();
+}
+
+export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+  const body = new URLSearchParams({
+    client_id: DISCORD_CLIENT_ID,
+    client_secret: DISCORD_CLIENT_SECRET,
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  });
+
+  const response = await fetch(`${DISCORD_API_URL}/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`Discord token refresh failed (${response.status}): ${text}`);
   }
   return response.json();
 }

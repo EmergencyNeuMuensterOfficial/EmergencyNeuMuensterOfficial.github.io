@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
       banner: user.banner ?? null,
       accentColor: typeof user.accent_color === 'number' ? user.accent_color : null,
       accessToken: token.access_token,
+      refreshToken: token.refresh_token,
     });
 
     const response = NextResponse.redirect(`${origin}${safeNext}`);
