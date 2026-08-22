@@ -1,11 +1,8 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Sidebar } from '../../components/Sidebar';
-import { Reveal } from '../../components/Reveal';
-import { apiHeaders } from '../../lib/clientApi';
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { apiHeaders } from "@/lib/clientApi";
 
 interface GuildCard {
   id: string;
@@ -14,198 +11,128 @@ interface GuildCard {
   owner: boolean;
 }
 
+interface MeUser {
+  id: string;
+  username: string;
+}
+
 interface GuildsResponse {
   data?: {
-    user?: { id: string; username: string; avatar: string | null };
+    user?: MeUser;
     guilds?: GuildCard[];
     missingBotToken?: boolean;
   };
   error?: string;
-  code?: string;
 }
 
-const LOGIN_ERRORS: Record<string, string> = {
-  error: 'Something went wrong while logging in. Please try again.',
-  invalid: 'The login link was invalid or expired. Please try again.',
-  missing_scope: 'Permission was denied. Please allow the requested permissions.',
-  no_admin: 'You need to be a server owner or administrator to use the dashboard.',
-};
+const VERSION = "v1";
 
 export default function DashboardPage() {
-  return (
-    <Suspense fallback={null}>
-      <DashboardInner />
-    </Suspense>
-  );
-}
-
-function DashboardInner() {
-  const searchParams = useSearchParams();
-  const loginError = searchParams.get('login');
-
+  const [guilds, setGuilds] = useState<GuildCard[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<GuildsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/dashboard/guilds', { cache: 'no-store', headers: apiHeaders() })
-      .then(async (response) => {
-        const payload = (await response.json()) as GuildsResponse;
-        if (response.status === 401) {
-          if (!cancelled) setData(null); // stay on the login card
-          return;
-        }
-        if (!response.ok) throw new Error(payload.error || 'Failed to load servers');
-        if (!cancelled) setData(payload);
-      })
-      .catch((cause) => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Failed to load servers');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/dashboard/guilds", {
+        cache: "no-store",
+        headers: apiHeaders(),
       });
-    return () => {
-      cancelled = true;
-    };
+      if (response.status === 401) {
+        setError("You must be logged in to view your servers.");
+        return;
+      }
+      const payload = (await response.json()) as GuildsResponse;
+      if (!response.ok) throw new Error(payload.error || "Failed to load servers");
+      setGuilds(payload.data?.guilds ?? []);
+      setUserId(payload.data?.user?.id ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load servers");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return (
-    <div className="min-h-screen bg-discord-darkest text-white">
-      <Sidebar />
-      <div className="ml-60">
-        <div className="border-b border-discord-gray/20 bg-discord-darker/80 px-6 py-4 animate-fade-in-up">
-          <h1 className="text-sm font-bold leading-tight">Dashboard</h1>
-          <p className="text-xs text-discord-lightGray">Manage your servers</p>
-        </div>
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-        <main className="mx-auto max-w-4xl px-6 py-10">
-          {loginError && LOGIN_ERRORS[loginError] && (
-            <Reveal>
-            <p className="mb-6 rounded-lg border border-discord-red/40 bg-discord-red/10 px-4 py-3 text-sm text-discord-red animate-fade-in-up">
-              {LOGIN_ERRORS[loginError]}
-            </p>
-            </Reveal>
-          )}
-
-          {loading && <p className="text-sm text-discord-lightGray">Checking your Discord session…</p>}
-
-          {!loading && !data && !error && (
-            <Reveal>
-            <div className="mx-auto max-w-md rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center animate-fade-in-up">
-              <p className="text-lg font-semibold">Log in with Discord</p>
-              <p className="mt-2 text-sm text-discord-lightGray">
-                You must be a server owner or administrator of a server where OnboardX is present to manage it.
-              </p>
-              <a
-                href="/api/auth/discord"
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-discord-blue px-6 py-3 text-sm font-semibold text-white transition hover:bg-discord-blue/80"
-              >
-                Login with Discord
-              </a>
-            </div>
-            </Reveal>
-          )}
-
-          {error && (
-            <Reveal>
-            <div className="mx-auto max-w-md rounded-2xl border border-discord-red/40 bg-discord-red/10 p-8 text-center animate-fade-in-up">
-              <p className="text-sm text-discord-red">{error}</p>
-              {error.includes('expired') ? (
-                <a
-                  href="/api/auth/discord"
-                  className="mt-4 inline-block rounded-lg bg-discord-blue px-5 py-2 text-sm font-semibold text-white transition hover:bg-discord-blue/80"
-                >
-                  Log in again
-                </a>
-              ) : (
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-4 inline-block rounded-lg border border-discord-gray/40 px-5 py-2 text-sm font-semibold text-discord-lighterGray transition hover:bg-discord-gray/40"
-                >
-                  Retry
-                </button>
-              )}
-            </div>
-            </Reveal>
-          )}
-
-          {data && (
-            <>
-              <div className="mb-6 flex items-center justify-between animate-fade-in-up">
-                <div>
-                  <h2 className="text-lg font-bold">Your servers</h2>
-                  <p className="mt-1 text-sm text-discord-lightGray">
-                    Servers where you have admin rights and OnboardX is present.
-                  </p>
-                </div>
-                {data.data?.user && (
-                  <form action="/api/auth/logout" method="post">
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-discord-gray/40 px-3 py-1.5 text-xs font-semibold text-discord-lighterGray transition hover:bg-discord-gray/40"
-                    >
-                      Log out
-                    </button>
-                  </form>
-                )}
-              </div>
-
-              {data.data?.missingBotToken && (
-                <p className="mb-6 rounded-lg border border-discord-yellow/40 bg-discord-yellow/10 px-4 py-3 text-sm text-discord-yellow">
-                  Bot presence could not be verified (DISCORD_TOKEN not configured), so all your admin servers are shown.
-                </p>
-              )}
-
-              {data.data?.guilds && data.data.guilds.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {data.data.guilds.map((guild, index) => (
-                    <Reveal key={guild.id} delay={(index % 3) * 80}>
-                    <Link
-                      href={`/dashboard/servers/${data.data?.user?.id ?? ''}/${guild.id}/v2`}
-                      className="group flex animate-fade-in-up items-center gap-3 rounded-2xl border border-discord-gray/20 bg-discord-darker p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-discord-blue/50 hover:bg-discord-dark hover:shadow-lg hover:shadow-discord-blue/10"
-                    >
-                      {guild.iconUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={guild.iconUrl}
-                          alt=""
-                          className="h-12 w-12 shrink-0 rounded-full transition-transform duration-300 group-hover:scale-110"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-discord-gray text-base font-bold">
-                          {guild.name.slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-discord-white">{guild.name}</p>
-                        <p className="text-xs text-discord-lightGray">
-                          {guild.owner ? 'Owner' : 'Administrator'} · Manage
-                        </p>
-                      </div>
-                    </Link>
-                    </Reveal>
-                  ))}
-                </div>
-              ) : (
-                <Reveal>
-                <div className="rounded-2xl border border-discord-gray/20 bg-discord-darker px-6 py-10 text-center animate-fade-in-up">
-                  <p className="text-sm text-discord-lightGray">
-                    No manageable servers found. OnboardX is not in any of your servers.
-                  </p>
-                  <a
-                    href={process.env.NEXT_PUBLIC_BOT_INVITE_URL || '#'}
-                    className="mt-4 inline-block rounded-lg bg-discord-blue px-5 py-2 text-sm font-semibold text-white transition hover:bg-discord-blue/80"
-                  >
-                    Add OnboardX to a server
-                  </a>
-                </div>
-                </Reveal>
-              )}
-            </>
-          )}
-        </main>
+  if (loading) {
+    return (
+      <div>
+        <h1 className="text-lg font-semibold text-discord-white">Server picker</h1>
+        <p className="mt-1 text-sm text-discord-lighterGray">Loading…</p>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <h1 className="text-lg font-semibold text-discord-white">Server picker</h1>
+        <p className="mt-1 text-sm text-discord-red">{error}</p>
+        {!error.includes("logged in") && (
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="btn-primary mt-4"
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-lg font-semibold text-discord-white">Server picker</h1>
+      <p className="mt-1 text-sm text-discord-lighterGray">
+        Choose a server to open the bot dashboard.
+      </p>
+
+      {guilds.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-discord-gray/20 bg-discord-darker p-8 text-center">
+          <p className="text-sm text-discord-lighterGray">
+            No manageable servers found. OnboardX is not in any of your servers.
+          </p>
+          <a
+            href="https://discord.com/oauth2/authorize?client_id=1399710116449878017&permissions=268446800&scope=bot%20applications.commands"
+            className="btn-primary mt-4 inline-flex"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Add OnboardX to a server
+          </a>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {guilds.map((guild) => (
+            <Link
+              key={guild.id}
+              href={`/dashboard/servers/${userId ?? ""}/${guild.id}/${VERSION}`}
+              className="flex cursor-pointer items-center gap-3 rounded-2xl border border-discord-gray/20 bg-discord-darker p-4 text-left font-semibold text-discord-white hover:border-discord-blue/50 hover:bg-discord-dark"
+            >
+              {guild.iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={guild.iconUrl}
+                  alt=""
+                  className="h-11 w-11 shrink-0 rounded-full"
+                />
+              ) : (
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-discord-dark text-sm font-semibold text-discord-white">
+                  {guild.name.slice(0, 1)}
+                </span>
+              )}
+              {guild.name}
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

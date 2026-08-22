@@ -104,6 +104,8 @@ export const COLLECTIONS = {
   guildConfigs: 'guild_configs',
   clusterControlCommands: 'cluster_control_commands',
   uptimeDaily: 'uptime_daily',
+  incidents: 'incidents',
+  maintenanceWindows: 'maintenance_windows',
 } as const;
 
 export async function getGuildConfig(guildId: string): Promise<Document | null> {

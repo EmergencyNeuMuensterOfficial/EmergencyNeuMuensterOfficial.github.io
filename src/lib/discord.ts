@@ -7,7 +7,7 @@ export const DISCORD_BOT_TOKEN = process.env.DISCORD_TOKEN || '';
 export const DASHBOARD_SCOPE = 'identify guilds';
 
 // ADMINISTRATOR (0x8) or MANAGE_GUILD (0x20)
-const ADMIN_PERMISSION_BITS = 0x8n | 0x20n;
+const ADMIN_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20);
 
 export function guildHasAdminPermission(permissions: unknown): boolean {
   if (typeof permissions !== 'string' && typeof permissions !== 'bigint' && typeof permissions !== 'number') {
@@ -15,7 +15,7 @@ export function guildHasAdminPermission(permissions: unknown): boolean {
   }
   try {
     const bits = BigInt(permissions);
-    return (bits & ADMIN_PERMISSION_BITS) !== 0n;
+    return (bits & ADMIN_PERMISSION_BITS) !== BigInt(0);
   } catch {
     return false;
   }
