@@ -2,23 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, getDiscordGuild } from '../../../../../lib/auth';
 import { getGuildConfig, updateGuildConfig } from '../../../../../lib/mongo';
 
-export async function GET(request: NextRequest, { params }: { params: { guildId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ guildId: string }> }) {
+  const { guildId } = await params;
   const session = await getSessionFromRequest(request);
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const guild = await getDiscordGuild(session, params.guildId);
+  const guild = await getDiscordGuild(session, guildId);
   if (!guild) {
     return NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
   }
 
-  const config = await getGuildConfig(params.guildId);
+  const config = await getGuildConfig(guildId);
   if (!config) {
     return NextResponse.json(
       {
         error: 'No configuration exists yet for this server. Save a setting to create it.',
-        data: { guildId: params.guildId, guild: { name: guild.name, icon: guild.icon } },
+        data: { guildId, guild: { name: guild.name, icon: guild.icon } },
       },
       { status: 404 }
     );
@@ -30,13 +31,14 @@ export async function GET(request: NextRequest, { params }: { params: { guildId:
   });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { guildId: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ guildId: string }> }) {
+  const { guildId } = await params;
   const session = await getSessionFromRequest(request);
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const guild = await getDiscordGuild(session, params.guildId);
+  const guild = await getDiscordGuild(session, guildId);
   if (!guild) {
     return NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
   }
@@ -54,13 +56,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { guildI
   }
 
   try {
-    await updateGuildConfig(params.guildId, updates);
+    await updateGuildConfig(guildId, updates);
   } catch (cause) {
-    console.error(`Failed to update guild config ${params.guildId}:`, cause);
+    console.error(`Failed to update guild config ${guildId}:`, cause);
     return NextResponse.json({ error: 'Failed to save settings.' }, { status: 500 });
   }
 
-  const config = await getGuildConfig(params.guildId);
+  const config = await getGuildConfig(guildId);
   const { _id, ...safeConfig } = config ?? {};
   return NextResponse.json({ data: { config: safeConfig } });
 }
