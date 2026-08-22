@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '../../components/Sidebar';
 import { Reveal } from '../../components/Reveal';
+import { apiHeaders } from '../../lib/clientApi';
 
 interface GuildCard {
   id: string;
@@ -48,7 +49,7 @@ function DashboardInner() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/dashboard/guilds', { cache: 'no-store' })
+    fetch('/api/dashboard/guilds', { cache: 'no-store', headers: apiHeaders() })
       .then(async (response) => {
         const payload = (await response.json()) as GuildsResponse;
         if (response.status === 401) {
@@ -161,7 +162,7 @@ function DashboardInner() {
                   {data.data.guilds.map((guild, index) => (
                     <Reveal key={guild.id} delay={(index % 3) * 80}>
                     <Link
-                      href={`/dashboard/${guild.id}`}
+                      href={`/dashboard/servers/${data.data?.user?.id ?? ''}/${guild.id}/v2`}
                       className="group flex animate-fade-in-up items-center gap-3 rounded-2xl border border-discord-gray/20 bg-discord-darker p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-discord-blue/50 hover:bg-discord-dark hover:shadow-lg hover:shadow-discord-blue/10"
                     >
                       {guild.iconUrl ? (

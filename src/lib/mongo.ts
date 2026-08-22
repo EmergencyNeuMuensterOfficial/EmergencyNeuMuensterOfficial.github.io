@@ -103,6 +103,7 @@ export const COLLECTIONS = {
   shardStatuses: 'shard_statuses',
   guildConfigs: 'guild_configs',
   clusterControlCommands: 'cluster_control_commands',
+  uptimeDaily: 'uptime_daily',
 } as const;
 
 export async function getGuildConfig(guildId: string): Promise<Document | null> {

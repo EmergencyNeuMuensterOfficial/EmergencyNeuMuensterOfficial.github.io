@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StatusPayload } from '../../lib/status';
 import { Sidebar } from '../../components/Sidebar';
 import { Reveal } from '../../components/Reveal';
+import { apiHeaders } from '../../lib/clientApi';
 
 interface ControlCommand {
   id: string;
@@ -91,7 +92,7 @@ export default function AdminPage() {
 
   const checkAccess = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/access', { cache: 'no-store' });
+      const response = await fetch('/api/admin/access', { cache: 'no-store', headers: apiHeaders() });
       const payload = (await response.json()) as AccessInfo;
       accessRef.current = payload;
       setAccess(payload);
@@ -107,7 +108,7 @@ export default function AdminPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/admin/status', { cache: 'no-store' });
+      const response = await fetch('/api/admin/status', { cache: 'no-store', headers: apiHeaders() });
       if (response.status === 401) {
         const info = accessRef.current;
         setAuth(info?.allowed ? 'authed' : info?.loggedIn ? 'forbidden' : 'denied');
@@ -151,7 +152,7 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await Promise.all([
-      fetch('/api/admin/logout', { method: 'POST' }).catch(() => {}),
+      fetch('/api/admin/logout', { method: 'POST', headers: apiHeaders() }).catch(() => {}),
       fetch('/api/auth/logout', { method: 'POST', redirect: 'manual' }).catch(() => {}),
     ]);
     window.location.href = '/';
@@ -170,7 +171,7 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/commands', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: apiHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ action, clusterId }),
       });
       const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;

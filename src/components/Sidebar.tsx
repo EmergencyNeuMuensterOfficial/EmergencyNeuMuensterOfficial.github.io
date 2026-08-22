@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { apiHeaders } from '../lib/clientApi';
 
 interface AccessInfo {
   loggedIn: boolean;
@@ -21,7 +22,7 @@ export function Sidebar() {
 
   const checkAdminAccess = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/access', { cache: 'no-store' });
+      const response = await fetch('/api/admin/access', { cache: 'no-store', headers: apiHeaders() });
       const payload = (await response.json()) as AccessInfo;
       setAdminAccess(payload.allowed);
     } catch {

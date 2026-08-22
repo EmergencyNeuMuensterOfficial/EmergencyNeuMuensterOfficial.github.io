@@ -1,5 +1,6 @@
 import { Sidebar } from '../components/Sidebar';
 import { Reveal } from '../components/Reveal';
+import { UptimeTracker } from '../components/UptimeTracker';
 
 const STATS = [
   { value: '96%', label: 'of members complete onboarding', delay: 0 },
@@ -104,6 +105,8 @@ export default function HomePage() {
               </Reveal>
             ))}
           </div>
+
+          <UptimeTracker />
 
           <section id="features" className="mt-16 w-full">
             <Reveal>

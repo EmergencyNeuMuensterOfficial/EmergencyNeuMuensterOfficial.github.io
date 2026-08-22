@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { apiHeaders } from '../lib/clientApi';
 
 interface MeUser {
   id: string;
@@ -50,7 +51,7 @@ export function ProfileChip() {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/me', { cache: 'no-store' });
+      const response = await fetch('/api/auth/me', { cache: 'no-store', headers: apiHeaders() });
       const payload = (await response.json()) as MeResponse;
       setMe(payload);
     } catch {

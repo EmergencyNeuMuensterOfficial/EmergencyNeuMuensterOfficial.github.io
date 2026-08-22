@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { StatusPayload } from '../../lib/status';
 import { Sidebar } from '../../components/Sidebar';
 import { Reveal } from '../../components/Reveal';
+import { apiHeaders } from '../../lib/clientApi';
 
 function formatUptime(seconds: number) {
   if (!seconds || seconds <= 0) return '—';
@@ -118,7 +119,7 @@ export default function StatusPage() {
   const loadStatus = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch('/api/status', { cache: 'no-store' });
+      const response = await fetch('/api/status', { cache: 'no-store', headers: apiHeaders() });
       const payload = await response.json();
       if (!response.ok || !payload.data) {
         throw new Error(payload.error || 'Unable to load status');

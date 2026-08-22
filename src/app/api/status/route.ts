@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { fetchBotStatus } from '../../../lib/status';
+import { recordUptimeSample } from '../../../lib/uptime';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const data = await fetchBotStatus();
+    // Feed the 30-day uptime history with every status check.
+    void recordUptimeSample(data.isOnline, {
+      guilds: data.totalGuilds,
+      users: data.totalUsers,
+    }).catch(() => {});
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch status';
