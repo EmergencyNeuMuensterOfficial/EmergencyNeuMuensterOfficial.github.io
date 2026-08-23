@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { fetchUserGuilds, guildHasAdminPermission, refreshAccessToken } from './discord';
+import { fetchUserGuilds, fetchBotGuilds, guildHasAdminPermission, refreshAccessToken, userCanManageGuild } from './discord';
 import { verifySessionToken, COOKIE_NAME, createSessionToken, type SessionData } from './session';
 
 export async function getSessionFromRequest(request: NextRequest): Promise<SessionData | null> {
@@ -16,41 +16,66 @@ export interface AdminGuildInfo {
 export interface AuthResult {
   adminGuilds: AdminGuildInfo[] | null;
   refreshedSession?: SessionData;
+  /** true when the bot token is missing, so bot-membership could not be verified */
+  missingBotToken?: boolean;
 }
 
-/**
- * Fetch the user's guilds and return the subset where they have admin rights.
- * Returns null adminGuilds if the access token is invalid/expired AND refresh fails.
- * If the token was refreshed, refreshedSession contains the updated session.
- */
-export async function getAdminGuilds(session: SessionData): Promise<AuthResult> {
+async function fetchUserGuildsSafe(session: SessionData): Promise<{ guilds: import('./discord').DiscordGuild[]; refreshedSession?: SessionData } | null> {
   try {
     const guilds = await fetchUserGuilds(session.accessToken);
-    const adminGuilds = guilds
-      .filter((guild) => guild.owner || guildHasAdminPermission(guild.permissions))
-      .map((guild) => ({ id: guild.id, name: guild.name, icon: guild.icon, owner: guild.owner }));
-    return { adminGuilds };
+    return { guilds };
   } catch {
-    // Access token may be expired — attempt refresh
-    if (!session.refreshToken) {
-      return { adminGuilds: null };
-    }
+    if (!session.refreshToken) return null;
     try {
       const newToken = await refreshAccessToken(session.refreshToken);
       const guilds = await fetchUserGuilds(newToken.access_token);
-      const adminGuilds = guilds
-        .filter((guild) => guild.owner || guildHasAdminPermission(guild.permissions))
-        .map((guild) => ({ id: guild.id, name: guild.name, icon: guild.icon, owner: guild.owner }));
       const refreshedSession: SessionData = {
         ...session,
         accessToken: newToken.access_token,
         refreshToken: newToken.refresh_token,
       };
-      return { adminGuilds, refreshedSession };
+      return { guilds, refreshedSession };
     } catch {
-      return { adminGuilds: null };
+      return null;
     }
   }
+}
+
+/**
+ * Return the guilds the user can manage AND the bot is present in.
+ *
+ * - We require the bot to be in the guild (management is only meaningful there).
+ * - We resolve effective permissions (base + role-granted admin) so servers where
+ *   the user is an admin via a role are correctly included.
+ * Returns null adminGuilds only when the user access token is invalid and refresh fails.
+ */
+export async function getAdminGuilds(session: SessionData): Promise<AuthResult> {
+  const userResult = await fetchUserGuildsSafe(session);
+  if (!userResult) {
+    return { adminGuilds: null };
+  }
+
+  let botGuildIds = new Set<string>();
+  let missingBotToken = false;
+  try {
+    const botGuilds = await fetchBotGuilds();
+    botGuildIds = new Set(botGuilds.map((g) => g.id));
+  } catch {
+    missingBotToken = true;
+  }
+
+  const manageable: AdminGuildInfo[] = [];
+  for (const guild of userResult.guilds) {
+    // Only consider guilds the bot is in (skip if we can verify bot membership).
+    if (!missingBotToken && !botGuildIds.has(guild.id)) continue;
+
+    const canManage = await userCanManageGuild(guild.id, guild.permissions, guild.owner);
+    if (canManage) {
+      manageable.push({ id: guild.id, name: guild.name, icon: guild.icon, owner: guild.owner });
+    }
+  }
+
+  return { adminGuilds: manageable, refreshedSession: userResult.refreshedSession, missingBotToken };
 }
 
 export interface DiscordGuildResult {
