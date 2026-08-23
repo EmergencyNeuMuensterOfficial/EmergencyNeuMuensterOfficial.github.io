@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const DASHBOARD_API_KEY = process.env.DASHBOARD_API_KEY || '';
 
-// Endpoints reached via browser navigation / native form posts that cannot
-// attach custom headers. Everything else under /api/* requires the key.
-const HEADERLESS_PATHS = new Set([
+// Endpoints that must work without any API key (browser navigation, public).
+const PUBLIC_PATHS = new Set([
   '/api/auth/discord',
   '/api/auth/discord/callback',
   '/api/auth/logout',
+  '/api/auth/me',
+  '/api/status',
+  '/api/status-events',
 ]);
 
 export function middleware(request: NextRequest) {
@@ -15,7 +17,7 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   if (!pathname.startsWith('/api/')) return NextResponse.next();
-  if (HEADERLESS_PATHS.has(pathname)) return NextResponse.next();
+  if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
   if (request.method === 'OPTIONS') return NextResponse.next();
 
   const provided = request.headers.get('x-api-key');

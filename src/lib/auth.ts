@@ -53,11 +53,41 @@ export async function getAdminGuilds(session: SessionData): Promise<AuthResult> 
   }
 }
 
-export async function getDiscordGuild(session: SessionData, guildId: string): Promise<{ guild: AdminGuildInfo | null; refreshedSession?: SessionData }> {
+export interface DiscordGuildResult {
+  guild: AdminGuildInfo | null;
+  refreshedSession?: SessionData;
+  /** true when the user-guilds lookup failed (token expired / Discord error) */
+  tokenFailed: boolean;
+}
+
+/**
+ * Resolve a single guild the user may manage.
+ *
+ * We rely on the bot's own guild membership as a fallback: managing a server
+ * requires the bot to be in it anyway, so if the Discord user-guilds call is
+ * flaky or the token is expired we still allow access when the bot is present.
+ */
+export async function getDiscordGuild(
+  session: SessionData,
+  guildId: string,
+  botGuildIds?: Set<string>,
+): Promise<DiscordGuildResult> {
   const result = await getAdminGuilds(session);
-  if (!result.adminGuilds) return { guild: null, refreshedSession: result.refreshedSession };
-  return {
-    guild: result.adminGuilds.find((g) => g.id === guildId) ?? null,
-    refreshedSession: result.refreshedSession,
-  };
+  if (result.adminGuilds) {
+    const found = result.adminGuilds.find((g) => g.id === guildId) ?? null;
+    if (found) {
+      return { guild: found, refreshedSession: result.refreshedSession, tokenFailed: false };
+    }
+  }
+
+  // User-guilds call failed or the guild wasn't in the admin list.
+  // Fall back to the bot's guild membership if we have it.
+  if (botGuildIds && botGuildIds.has(guildId)) {
+    return {
+      guild: { id: guildId, name: guildId, icon: null, owner: false },
+      tokenFailed: result.adminGuilds === null,
+    };
+  }
+
+  return { guild: null, refreshedSession: result.refreshedSession, tokenFailed: result.adminGuilds === null };
 }

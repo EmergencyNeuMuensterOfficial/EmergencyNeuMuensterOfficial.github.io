@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, getDiscordGuild } from '../../../../../lib/auth';
 import { getGuildConfig, updateGuildConfig } from '../../../../../lib/mongo';
+import { fetchBotGuilds } from '../../../../../lib/discord';
 import { COOKIE_NAME, createSessionToken } from '../../../../../lib/session';
 
 function withRefreshCookie(response: NextResponse, refreshedSession: { userId: string; username: string; avatar: string | null; globalName: string | null; discriminator: string; banner: string | null; accentColor: number | null; accessToken: string; refreshToken: string } | undefined): NextResponse {
@@ -15,6 +16,15 @@ function withRefreshCookie(response: NextResponse, refreshedSession: { userId: s
   return response;
 }
 
+async function loadBotGuildIds(): Promise<Set<string>> {
+  try {
+    const botGuilds = await fetchBotGuilds();
+    return new Set(botGuilds.map((g) => g.id));
+  } catch {
+    return new Set();
+  }
+}
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
   const session = await getSessionFromRequest(request);
@@ -22,9 +32,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { guild, refreshedSession } = await getDiscordGuild(session, guildId);
+  const botGuildIds = await loadBotGuildIds();
+  const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId, botGuildIds);
   if (!guild) {
-    const resp = NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
+    const resp = NextResponse.json(
+      tokenFailed
+        ? { error: 'Your login session expired. Please sign in again.' }
+        : { error: 'You do not have permission to manage this server.' },
+      { status: tokenFailed ? 401 : 403 },
+    );
     return withRefreshCookie(resp, refreshedSession);
   }
 
@@ -35,7 +51,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         error: 'No configuration exists yet for this server. Save a setting to create it.',
         data: { guildId, guild: { name: guild.name, icon: guild.icon } },
       },
-      { status: 404 }
+      { status: 404 },
     );
     return withRefreshCookie(resp, refreshedSession);
   }
@@ -54,9 +70,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { guild, refreshedSession } = await getDiscordGuild(session, guildId);
+  const botGuildIds = await loadBotGuildIds();
+  const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId, botGuildIds);
   if (!guild) {
-    const resp = NextResponse.json({ error: 'You do not have permission to manage this server.' }, { status: 403 });
+    const resp = NextResponse.json(
+      tokenFailed
+        ? { error: 'Your login session expired. Please sign in again.' }
+        : { error: 'You do not have permission to manage this server.' },
+      { status: tokenFailed ? 401 : 403 },
+    );
     return withRefreshCookie(resp, refreshedSession);
   }
 
