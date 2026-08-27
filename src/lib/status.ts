@@ -234,7 +234,12 @@ function normalizeSystemStatus(doc: Record<string, unknown> | null | undefined) 
 
 function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusRecord {
   const stale = isExpired(doc.expiresAt);
-  const online = !stale && doc.state !== 'stopped' && doc.state !== 'offline';
+  const ready = stale ? false : doc.ready === true;
+  const ping = numberValue(doc.ping, -1);
+  // A cluster is only "online" if it is fresh, ready, and actually reporting a
+  // valid gateway ping. A disconnected gateway (ping -1, ready=false) must read
+  // as offline rather than online.
+  const online = !stale && ready && ping >= 0 && doc.state !== 'stopped' && doc.state !== 'offline';
   const clusterId = numberValue(doc.clusterId ?? doc._id);
 
   return {
@@ -242,7 +247,7 @@ function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusReco
     clusterId,
     state: stale ? 'offline' : textValue(doc.state),
     processState: stale ? 'offline' : textValue(doc.processState, textValue(doc.state)),
-    ready: stale ? false : doc.ready === true,
+    ready,
     online,
     stale,
     shardCount: numberValue(doc.shardCount, Array.isArray(doc.shards) ? doc.shards.length : 0),
@@ -251,7 +256,7 @@ function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusReco
     guilds: numberValue(doc.guilds),
     users: numberValue(doc.users),
     channels: numberValue(doc.channels),
-    ping: numberValue(doc.ping, -1),
+    ping,
     uptime: Math.max(0, Math.floor(numberValue(doc.uptime) / 1000)),
     memoryMB: numberValue(doc.memoryMB),
     wsStatus: textValue(doc.wsStatus),
@@ -264,7 +269,9 @@ function normalizeClusterStatus(doc: Record<string, unknown>): ClusterStatusReco
 
 function normalizeShardStatus(doc: Record<string, unknown>): ShardStatusRecord {
   const stale = isExpired(doc.expiresAt);
-  const online = !stale && doc.state !== 'stopped' && doc.state !== 'offline';
+  const ready = stale ? false : doc.ready === true;
+  const ping = numberValue(doc.ping, -1);
+  const online = !stale && ready && ping >= 0 && doc.state !== 'stopped' && doc.state !== 'offline';
   const shardId = numberValue(doc.shardId ?? doc._id);
 
   return {
@@ -272,11 +279,11 @@ function normalizeShardStatus(doc: Record<string, unknown>): ShardStatusRecord {
     shardId,
     clusterId: doc.clusterId == null ? null : numberValue(doc.clusterId),
     state: stale ? 'offline' : textValue(doc.state),
-    ready: stale ? false : doc.ready === true,
+    ready,
     online,
     stale,
     statusCode: stale ? null : doc.statusCode == null ? null : numberValue(doc.statusCode),
-    ping: numberValue(doc.ping, -1),
+    ping,
     guilds: numberValue(doc.guilds),
     users: numberValue(doc.users),
     channels: numberValue(doc.channels),

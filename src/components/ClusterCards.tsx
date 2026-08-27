@@ -48,9 +48,9 @@ function pill(status: string) {
   return "border-discord-red/40 bg-discord-red/15 text-discord-red";
 }
 
-function clusterState(online: boolean, stale: boolean): "Online" | "Degraded" | "Offline" {
+function clusterState(online: boolean, stale: boolean, ping = 0): "Online" | "Degraded" | "Offline" {
   if (stale) return "Offline";
-  if (!online) return "Offline";
+  if (!online || ping < 0) return "Offline";
   return "Online";
 }
 
@@ -80,7 +80,7 @@ export function ClusterCards() {
         id: c.clusterId,
         guilds: c.guilds,
         ping: c.ping,
-        state: clusterState(c.online, c.stale),
+        state: clusterState(c.online, c.stale, c.ping),
         shards: (c.shardStates ?? []).map((s) => ({
           id: s.shardId,
           guilds: s.guilds,
@@ -142,7 +142,7 @@ export function ClusterCards() {
               </span>
               <span className="text-sm text-discord-white">{cluster.guilds}</span>
               <span className="font-mono text-xs text-discord-white">
-                {cluster.ping}ms
+                {cluster.ping >= 0 ? `${cluster.ping}ms` : "—"}
               </span>
               <span
                 className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${pill(cluster.state)}`}

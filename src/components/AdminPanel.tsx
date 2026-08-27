@@ -100,9 +100,9 @@ function pill(status: string) {
   return "bg-discord-red/15 text-discord-red";
 }
 
-function clusterState(online: boolean, stale: boolean) {
+function clusterState(online: boolean, stale: boolean, ping = 0) {
   if (stale) return "Offline";
-  if (!online) return "Offline";
+  if (!online || ping < 0) return "Offline";
   return "Online";
 }
 
@@ -632,7 +632,7 @@ export function AdminPanel() {
             <p className="px-4 py-6 text-center text-sm text-discord-lighterGray">No cluster data available.</p>
           ) : (
             (statusData?.clusters ?? []).map((cluster) => {
-              const state = clusterState(cluster.online, cluster.stale);
+              const state = clusterState(cluster.online, cluster.stale, cluster.ping);
               const expanded = openCluster === cluster.clusterId;
               const placements = cluster.guildPlacements ?? [];
               const query = guildQuery.trim().toLowerCase();
@@ -668,7 +668,7 @@ export function AdminPanel() {
                       {state}
                     </span>
                     <p className="text-xs text-discord-lighterGray">
-                      {cluster.guilds} guilds · {cluster.ping}ms
+                      {cluster.guilds} guilds · {cluster.ping >= 0 ? `${cluster.ping}ms` : "—"}
                     </p>
                     <button
                       type="button"
