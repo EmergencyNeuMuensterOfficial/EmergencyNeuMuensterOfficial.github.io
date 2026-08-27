@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Dropdown } from "@/components/Dropdown";
 import { ModuleToggle } from "@/components/ToggleSwitch";
 import { apiHeaders } from "@/lib/clientApi";
@@ -47,6 +48,12 @@ type AdminStatus = {
     ping: number;
     online: boolean;
     stale: boolean;
+    guildPlacements?: Array<{
+      id: string;
+      name: string;
+      shardId: number | null;
+      memberCount: number | null;
+    }>;
   }>;
 };
 
@@ -118,6 +125,8 @@ export function AdminPanel() {
   const [maintTitle, setMaintTitle] = useState("");
   const [maintWhen, setMaintWhen] = useState("");
   const [restarting, setRestarting] = useState<number | null>(null);
+  const [openCluster, setOpenCluster] = useState<number | null>(null);
+  const [guildQuery, setGuildQuery] = useState("");
 
   const checkAccess = useCallback(async () => {
     try {
@@ -624,34 +633,109 @@ export function AdminPanel() {
           ) : (
             (statusData?.clusters ?? []).map((cluster) => {
               const state = clusterState(cluster.online, cluster.stale);
+              const expanded = openCluster === cluster.clusterId;
+              const placements = cluster.guildPlacements ?? [];
+              const query = guildQuery.trim().toLowerCase();
+              const filtered = query
+                ? placements.filter((g) => g.name.toLowerCase().includes(query) || g.id.includes(query))
+                : placements;
               return (
                 <div
                   key={cluster.clusterId}
-                  className="flex flex-wrap items-center gap-3 border-t border-discord-gray/20 px-4 py-4 first:border-t-0"
+                  className="border-t border-discord-gray/20 first:border-t-0"
                 >
-                  <p className="text-sm font-semibold text-discord-white">
-                    Cluster {cluster.clusterId}
-                  </p>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${pill(state)}`}
-                  >
-                    {state}
-                  </span>
-                  <p className="text-xs text-discord-lighterGray">
-                    {cluster.guilds} guilds · {cluster.ping}ms
-                  </p>
-                  <button
-                    type="button"
-                    className="ml-auto inline-flex min-h-9 cursor-pointer items-center rounded-full bg-discord-dark px-3 text-sm font-semibold text-discord-white hover:bg-discord-gray/50"
-                    disabled={restarting === cluster.clusterId}
-                    onClick={() => {
-                      setRestarting(cluster.clusterId);
-                      void sendCommand("restart_cluster", cluster.clusterId);
-                      window.setTimeout(() => setRestarting(null), 3000);
-                    }}
-                  >
-                    {restarting === cluster.clusterId ? "Restarting..." : "Restart"}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3 px-4 py-4">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 text-left"
+                      aria-expanded={expanded}
+                      onClick={() => {
+                        setOpenCluster(expanded ? null : cluster.clusterId);
+                        setGuildQuery("");
+                      }}
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-discord-lighterGray transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+                        aria-hidden
+                      />
+                      <p className="text-sm font-semibold text-discord-white">
+                        Cluster {cluster.clusterId}
+                      </p>
+                    </button>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${pill(state)}`}
+                    >
+                      {state}
+                    </span>
+                    <p className="text-xs text-discord-lighterGray">
+                      {cluster.guilds} guilds · {cluster.ping}ms
+                    </p>
+                    <button
+                      type="button"
+                      className="ml-auto inline-flex min-h-9 cursor-pointer items-center rounded-full bg-discord-dark px-3 text-sm font-semibold text-discord-white hover:bg-discord-gray/50"
+                      disabled={restarting === cluster.clusterId}
+                      onClick={() => {
+                        setRestarting(cluster.clusterId);
+                        void sendCommand("restart_cluster", cluster.clusterId);
+                        window.setTimeout(() => setRestarting(null), 3000);
+                      }}
+                    >
+                      {restarting === cluster.clusterId ? "Restarting..." : "Restart"}
+                    </button>
+                  </div>
+
+                  {expanded ? (
+                    <div className="border-t border-discord-gray/20 bg-discord-dark px-4 py-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-discord-lighterGray">
+                          Guilds on this cluster
+                          {placements.length > 0 ? ` (${placements.length})` : ""}
+                        </p>
+                        {placements.length > 0 && (
+                          <input
+                            value={guildQuery}
+                            onChange={(e) => setGuildQuery(e.target.value)}
+                            className="w-full max-w-xs rounded-2xl border border-discord-gray/40 bg-discord-darker px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue"
+                            placeholder="Search guilds…"
+                          />
+                        )}
+                      </div>
+
+                      {placements.length === 0 ? (
+                        <p className="mt-3 text-sm text-discord-lighterGray">
+                          No guild placement data reported for this cluster.
+                        </p>
+                      ) : filtered.length === 0 ? (
+                        <p className="mt-3 text-sm text-discord-lighterGray">No guilds match your search.</p>
+                      ) : (
+                        <ul className="mt-3 max-h-80 space-y-1 overflow-y-auto pr-1">
+                          {filtered.map((g) => (
+                            <li
+                              key={g.id}
+                              className="flex flex-wrap items-center gap-2 rounded-xl bg-discord-darker px-3 py-2"
+                            >
+                              <span className="text-sm font-semibold text-discord-white">
+                                {g.name}
+                              </span>
+                              {g.shardId != null && (
+                                <span className="text-xs text-discord-lighterGray">
+                                  shard {g.shardId}
+                                </span>
+                              )}
+                              {g.memberCount != null && (
+                                <span className="ml-auto text-xs text-discord-lighterGray">
+                                  {g.memberCount.toLocaleString()} members
+                                </span>
+                              )}
+                              <span className="w-full font-mono text-[11px] text-discord-lightGray">
+                                {g.id}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               );
             })
