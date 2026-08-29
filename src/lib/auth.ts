@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { fetchUserGuilds, fetchBotGuilds, guildHasAdminPermission, refreshAccessToken, userCanManageGuild } from './discord';
+import { DISCORD_BOT_TOKEN, fetchUserGuilds, fetchBotGuilds, refreshAccessToken, userCanManageGuild } from './discord';
 import { verifySessionToken, COOKIE_NAME, createSessionToken, type SessionData } from './session';
 
 export async function getSessionFromRequest(request: NextRequest): Promise<SessionData | null> {
@@ -55,27 +55,31 @@ export async function getAdminGuilds(session: SessionData): Promise<AuthResult> 
     return { adminGuilds: null };
   }
 
-  let botGuildIds = new Set<string>();
-  let missingBotToken = false;
+  if (!DISCORD_BOT_TOKEN) {
+    return { adminGuilds: [], refreshedSession: userResult.refreshedSession, missingBotToken: true };
+  }
+
+  let botGuildIds: Set<string>;
   try {
     const botGuilds = await fetchBotGuilds();
     botGuildIds = new Set(botGuilds.map((g) => g.id));
   } catch {
-    missingBotToken = true;
+    // We must not show guilds whose bot membership cannot be verified.
+    return { adminGuilds: [], refreshedSession: userResult.refreshedSession, missingBotToken: true };
   }
 
   const manageable: AdminGuildInfo[] = [];
   for (const guild of userResult.guilds) {
-    // Only consider guilds the bot is in (skip if we can verify bot membership).
-    if (!missingBotToken && !botGuildIds.has(guild.id)) continue;
+    if (!botGuildIds.has(guild.id)) continue;
 
-    const canManage = await userCanManageGuild(guild.id, guild.permissions, guild.owner);
+    const permissions = guild.permissions_new ?? guild.permissions;
+    const canManage = await userCanManageGuild(guild.id, session.userId, permissions, guild.owner);
     if (canManage) {
       manageable.push({ id: guild.id, name: guild.name, icon: guild.icon, owner: guild.owner });
     }
   }
 
-  return { adminGuilds: manageable, refreshedSession: userResult.refreshedSession, missingBotToken };
+  return { adminGuilds: manageable, refreshedSession: userResult.refreshedSession };
 }
 
 export interface DiscordGuildResult {
@@ -88,30 +92,16 @@ export interface DiscordGuildResult {
 /**
  * Resolve a single guild the user may manage.
  *
- * We rely on the bot's own guild membership as a fallback: managing a server
- * requires the bot to be in it anyway, so if the Discord user-guilds call is
- * flaky or the token is expired we still allow access when the bot is present.
+ * The guild must remain in the user's verified manageable-guild list; bot
+ * membership alone is not sufficient to grant dashboard access.
  */
-export async function getDiscordGuild(
-  session: SessionData,
-  guildId: string,
-  botGuildIds?: Set<string>,
-): Promise<DiscordGuildResult> {
+export async function getDiscordGuild(session: SessionData, guildId: string): Promise<DiscordGuildResult> {
   const result = await getAdminGuilds(session);
   if (result.adminGuilds) {
     const found = result.adminGuilds.find((g) => g.id === guildId) ?? null;
     if (found) {
       return { guild: found, refreshedSession: result.refreshedSession, tokenFailed: false };
     }
-  }
-
-  // User-guilds call failed or the guild wasn't in the admin list.
-  // Fall back to the bot's guild membership if we have it.
-  if (botGuildIds && botGuildIds.has(guildId)) {
-    return {
-      guild: { id: guildId, name: guildId, icon: null, owner: false },
-      tokenFailed: result.adminGuilds === null,
-    };
   }
 
   return { guild: null, refreshedSession: result.refreshedSession, tokenFailed: result.adminGuilds === null };

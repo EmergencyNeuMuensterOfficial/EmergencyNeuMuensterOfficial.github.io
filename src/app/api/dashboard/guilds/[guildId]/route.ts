@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, getDiscordGuild } from '../../../../../lib/auth';
 import { getGuildConfig, updateGuildConfig } from '../../../../../lib/mongo';
-import { fetchBotGuilds } from '../../../../../lib/discord';
 import { COOKIE_NAME, createSessionToken } from '../../../../../lib/session';
 
 function withRefreshCookie(response: NextResponse, refreshedSession: { userId: string; username: string; avatar: string | null; globalName: string | null; discriminator: string; banner: string | null; accentColor: number | null; accessToken: string; refreshToken: string } | undefined): NextResponse {
@@ -16,15 +15,6 @@ function withRefreshCookie(response: NextResponse, refreshedSession: { userId: s
   return response;
 }
 
-async function loadBotGuildIds(): Promise<Set<string>> {
-  try {
-    const botGuilds = await fetchBotGuilds();
-    return new Set(botGuilds.map((g) => g.id));
-  } catch {
-    return new Set();
-  }
-}
-
 export async function GET(request: NextRequest, { params }: { params: Promise<{ guildId: string }> }) {
   const { guildId } = await params;
   const session = await getSessionFromRequest(request);
@@ -32,8 +22,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const botGuildIds = await loadBotGuildIds();
-  const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId, botGuildIds);
+  const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId);
   if (!guild) {
     const resp = NextResponse.json(
       tokenFailed
@@ -70,8 +59,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const botGuildIds = await loadBotGuildIds();
-  const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId, botGuildIds);
+  const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId);
   if (!guild) {
     const resp = NextResponse.json(
       tokenFailed

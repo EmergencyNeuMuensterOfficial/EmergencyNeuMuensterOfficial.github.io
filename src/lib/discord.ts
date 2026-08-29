@@ -6,17 +6,15 @@ export const DISCORD_BOT_TOKEN = process.env.DISCORD_TOKEN || '';
 
 export const DASHBOARD_SCOPE = 'identify guilds';
 
-// Admin-like permission bits:
-// ADMINISTRATOR (0x8), MANAGE_GUILD (0x20), MANAGE_CHANNELS (0x10),
-// MANAGE_ROLES (0x1000000), MANAGE_WEBHOOKS (0x20000000), BAN_MEMBERS (0x4),
-// KICK_MEMBERS (0x2)
-const ADMIN_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20) | BigInt(0x10) | BigInt(0x1000000) | BigInt(0x20000000) | BigInt(0x4) | BigInt(0x2);
+// A dashboard user must be able to manage the server itself. Moderation and
+// channel-specific permissions do not grant access to the server dashboard.
+const MANAGE_GUILD_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20);
 
 export function guildHasAdminPermission(permissions: unknown): boolean {
   if (permissions == null) return false;
   try {
     const bits = BigInt(String(permissions));
-    return (bits & ADMIN_PERMISSION_BITS) !== BigInt(0);
+    return (bits & MANAGE_GUILD_PERMISSION_BITS) !== BigInt(0);
   } catch {
     return false;
   }
@@ -118,6 +116,7 @@ export interface DiscordGuild {
   icon: string | null;
   owner: boolean;
   permissions?: string;
+  permissions_new?: string;
 }
 
 export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
@@ -143,15 +142,13 @@ export async function fetchBotGuilds(): Promise<DiscordGuild[]> {
   return response.json();
 }
 
-const PERMISSION_ADMINISTRATOR = BigInt(0x8);
-
 export interface GuildMember {
   roles: string[];
 }
 
-export async function fetchGuildMember(guildId: string): Promise<GuildMember | null> {
+export async function fetchGuildMember(guildId: string, userId: string): Promise<GuildMember | null> {
   if (!DISCORD_BOT_TOKEN) return null;
-  const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/members/@me`, {
+  const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/members/${userId}`, {
     headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
     cache: 'no-store',
   });
@@ -202,6 +199,7 @@ export function computeEffectivePermissions(guildId: string, roleIds: string[], 
  */
 export async function userCanManageGuild(
   guildId: string,
+  userId: string,
   basePermissions: string | undefined,
   owner: boolean,
 ): Promise<boolean> {
@@ -210,12 +208,12 @@ export async function userCanManageGuild(
   if (!DISCORD_BOT_TOKEN) return false;
 
   try {
-    const member = await fetchGuildMember(guildId);
+    const member = await fetchGuildMember(guildId, userId);
     if (!member) return false;
     const roles = await fetchGuildRoles(guildId);
     if (!roles) return false;
     const effective = computeEffectivePermissions(guildId, member.roles, roles);
-    return (effective & PERMISSION_ADMINISTRATOR) !== BigInt(0);
+    return (effective & MANAGE_GUILD_PERMISSION_BITS) !== BigInt(0);
   } catch {
     return false;
   }

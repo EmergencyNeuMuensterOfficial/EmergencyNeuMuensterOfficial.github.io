@@ -106,6 +106,8 @@ export const COLLECTIONS = {
   uptimeDaily: 'uptime_daily',
   incidents: 'incidents',
   maintenanceWindows: 'maintenance_windows',
+  applicationForms: 'application_forms',
+  formSubmissions: 'form_submissions',
 } as const;
 
 export async function getGuildConfig(guildId: string): Promise<Document | null> {
