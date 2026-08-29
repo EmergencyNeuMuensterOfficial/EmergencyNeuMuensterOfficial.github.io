@@ -22,10 +22,10 @@ const MODULES = [
   { key: "tempVoice", label: "Temp Voice", description: "Self-hosted voice channels" },
   { key: "integrations", label: "Integrations", description: "Webhooks & external services" },
   { key: "sticky", label: "Sticky", description: "Pin messages to a channel" },
+  { key: "afk", label: "AFK", description: "Track members who are away" },
   { key: "counting", label: "Counting", description: "Counting game channel" },
-  { key: "honeypot", label: "Honeypot", description: "Catch malicious users" },
-  { key: "tempRoles", label: "Temp Roles", description: "Time-limited roles" },
-  { key: "security", label: "Security", description: "Security profiles & rules" },
+  { key: "modCases", label: "Moderation Cases", description: "Keep moderation case records" },
+  { key: "applicationForms", label: "Application Forms", description: "Enable server application forms" },
 ];
 
 interface GuildConfig {
@@ -159,7 +159,7 @@ function ServerDashboardInner() {
 
       {savedAt && (
         <p className="mt-4 rounded-2xl border border-discord-green/40 bg-discord-green/10 px-4 py-3 text-sm text-discord-green">
-          Saved at {savedAt}.
+          Saved at {savedAt}. OnboardX applies configuration changes within one minute.
         </p>
       )}
 
@@ -201,6 +201,8 @@ function ServerDashboardInner() {
               label={mod.label}
               description={mod.description}
               defaultOn={modules[mod.key] === true}
+              checked={modules[mod.key] === true}
+              onCheckedChange={() => toggleModule(mod.key)}
             />
           ))}
         </section>

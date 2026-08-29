@@ -45,8 +45,7 @@ async function fetchUserGuildsSafe(session: SessionData): Promise<{ guilds: impo
  * Return the guilds the user can manage AND the bot is present in.
  *
  * - We require the bot to be in the guild (management is only meaningful there).
- * - We resolve effective permissions (base + role-granted admin) so servers where
- *   the user is an admin via a role are correctly included.
+ * - Discord reports the current user's total guild permissions, including roles.
  * Returns null adminGuilds only when the user access token is invalid and refresh fails.
  */
 export async function getAdminGuilds(session: SessionData): Promise<AuthResult> {
@@ -72,8 +71,8 @@ export async function getAdminGuilds(session: SessionData): Promise<AuthResult> 
   for (const guild of userResult.guilds) {
     if (!botGuildIds.has(guild.id)) continue;
 
-    const permissions = guild.permissions_new ?? guild.permissions;
-    const canManage = await userCanManageGuild(guild.id, session.userId, permissions, guild.owner);
+    const permissions = guild.permissions ?? guild.permissions_new;
+    const canManage = userCanManageGuild(permissions, guild.owner);
     if (canManage) {
       manageable.push({ id: guild.id, name: guild.name, icon: guild.icon, owner: guild.owner });
     }

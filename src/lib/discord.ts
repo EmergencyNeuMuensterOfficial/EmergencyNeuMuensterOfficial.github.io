@@ -142,81 +142,9 @@ export async function fetchBotGuilds(): Promise<DiscordGuild[]> {
   return response.json();
 }
 
-export interface GuildMember {
-  roles: string[];
-}
-
-export async function fetchGuildMember(guildId: string, userId: string): Promise<GuildMember | null> {
-  if (!DISCORD_BOT_TOKEN) return null;
-  const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/members/${userId}`, {
-    headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
-    cache: 'no-store',
-  });
-  if (!response.ok) return null;
-  return response.json();
-}
-
-export interface GuildRole {
-  id: string;
-  permissions: string;
-}
-
-export async function fetchGuildRoles(guildId: string): Promise<GuildRole[] | null> {
-  if (!DISCORD_BOT_TOKEN) return null;
-  const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/roles`, {
-    headers: { Authorization: `Bot ${DISCORD_BOT_TOKEN}` },
-    cache: 'no-store',
-  });
-  if (!response.ok) return null;
-  return response.json();
-}
-
-/**
- * Compute a member's effective permissions by OR-ing the @everyone role
- * (whose id equals the guild id) with every role the member has.
- */
-export function computeEffectivePermissions(guildId: string, roleIds: string[], roles: GuildRole[]): bigint {
-  const memberRoles = new Set([guildId, ...roleIds]);
-  let bits = BigInt(0);
-  for (const role of roles) {
-    if (memberRoles.has(role.id)) {
-      try {
-        bits |= BigInt(role.permissions);
-      } catch {
-        // ignore malformed permission strings
-      }
-    }
-  }
-  return bits;
-}
-
-/**
- * Determine whether the current user can manage a guild.
- *
- * Discord's `/users/@me/guilds` permissions field only reflects BASE permissions
- * and omits role-granted admin, so we fall back to computing effective
- * permissions from the guild's roles (requires the bot token).
- */
-export async function userCanManageGuild(
-  guildId: string,
-  userId: string,
-  basePermissions: string | undefined,
-  owner: boolean,
-): Promise<boolean> {
-  if (owner) return true;
-  if (guildHasAdminPermission(basePermissions)) return true;
-  if (!DISCORD_BOT_TOKEN) return false;
-
-  try {
-    const member = await fetchGuildMember(guildId, userId);
-    if (!member) return false;
-    const roles = await fetchGuildRoles(guildId);
-    if (!roles) return false;
-    const effective = computeEffectivePermissions(guildId, member.roles, roles);
-    return (effective & MANAGE_GUILD_PERMISSION_BITS) !== BigInt(0);
-  } catch {
-    return false;
-  }
+/** Discord includes the user's total guild permissions in the OAuth guild list. */
+export function userCanManageGuild(permissions: string | undefined, owner: boolean): boolean {
+  return owner || guildHasAdminPermission(permissions);
 }
 
 export function guildIconUrl(guild: { id: string; icon: string | null }): string | null {

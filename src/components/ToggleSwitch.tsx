@@ -6,13 +6,18 @@ export function ModuleToggle({
   label,
   description,
   defaultOn,
+  checked,
+  onCheckedChange,
 }: {
   label: string;
   description?: string;
   defaultOn: boolean;
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
 }) {
-  const [on, setOn] = useState(defaultOn);
+  const [internalOn, setInternalOn] = useState(defaultOn);
   const [spin, setSpin] = useState<"on" | "off" | null>(null);
+  const on = checked ?? internalOn;
 
   useEffect(() => {
     if (!spin) return;
@@ -27,7 +32,8 @@ export function ModuleToggle({
         if (spin) return;
         const next = !on;
         setSpin(next ? "on" : "off");
-        setOn(next);
+        if (checked === undefined) setInternalOn(next);
+        onCheckedChange?.(next);
       }}
       className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-discord-gray/20 bg-discord-dark p-4 text-left hover:bg-discord-gray/30"
     >
