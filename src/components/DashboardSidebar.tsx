@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, LayoutGrid, Settings } from "lucide-react";
-import { apiHeaders } from "@/lib/clientApi";
 
 interface GuildCard {
   id: string;
@@ -54,7 +53,6 @@ export function DashboardSidebar() {
     try {
       const response = await fetch("/api/dashboard/guilds", {
         cache: "no-store",
-        headers: apiHeaders(),
       });
       if (!response.ok) return;
       const payload = (await response.json()) as GuildsResponse;

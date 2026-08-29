@@ -4,7 +4,6 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { Dropdown } from "@/components/Dropdown";
 import { ModuleToggle } from "@/components/ToggleSwitch";
-import { apiHeaders } from "@/lib/clientApi";
 
 const MODULES = [
   { key: "logging", label: "Logging", description: "Audit log events to a channel" },
@@ -66,7 +65,6 @@ function ServerDashboardInner() {
     try {
       const response = await fetch(`/api/dashboard/guilds/${params.guildId}`, {
         cache: "no-store",
-        headers: apiHeaders(),
       });
       if (response.status === 401 || response.status === 403) {
         if (response.status === 401) {
@@ -107,7 +105,7 @@ function ServerDashboardInner() {
     try {
       const response = await fetch(`/api/dashboard/guilds/${params.guildId}`, {
         method: "PATCH",
-        headers: apiHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prefix, language, modules }),
       });
       const payload = (await response.json()) as ConfigResponse;

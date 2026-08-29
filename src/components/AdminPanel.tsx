@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Dropdown } from "@/components/Dropdown";
 import { ModuleToggle } from "@/components/ToggleSwitch";
-import { apiHeaders } from "@/lib/clientApi";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -146,7 +145,7 @@ export function AdminPanel() {
     setLoading(true);
     try {
       const [statusRes, eventsRes] = await Promise.all([
-        fetch("/api/admin/status", { cache: "no-store", headers: apiHeaders() }),
+        fetch("/api/admin/status", { cache: "no-store" }),
         fetch("/api/status-events", { cache: "no-store" }),
       ]);
       if (statusRes.ok) {
@@ -216,7 +215,7 @@ export function AdminPanel() {
       if (clusterId != null) body.clusterId = clusterId;
       await fetch("/api/admin/commands", {
         method: "POST",
-        headers: apiHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       void loadData();
@@ -230,7 +229,7 @@ export function AdminPanel() {
     try {
       const res = await fetch("/api/admin/events", {
         method: "POST",
-        headers: apiHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "incident",
           title: title.trim(),
@@ -265,7 +264,7 @@ export function AdminPanel() {
     try {
       const res = await fetch("/api/admin/events", {
         method: "POST",
-        headers: apiHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           kind: "maintenance",
           title: maintTitle.trim(),
@@ -539,7 +538,7 @@ export function AdminPanel() {
                       onChange={(next) => {
                         void fetch("/api/admin/events", {
                           method: "PATCH",
-                          headers: apiHeaders({ "Content-Type": "application/json" }),
+                          headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ id: item.id, kind: "incident", status: next }),
                         });
                         setIncidents((list) =>
@@ -612,7 +611,7 @@ export function AdminPanel() {
                     type="button"
                     className="inline-flex min-h-9 cursor-pointer items-center rounded-full px-3 text-sm font-semibold text-discord-red hover:bg-discord-red/15"
                     onClick={() => {
-                      void fetch(`/api/admin/events?id=${item.id}&kind=maintenance`, { method: "DELETE", headers: apiHeaders() });
+                      void fetch(`/api/admin/events?id=${item.id}&kind=maintenance`, { method: "DELETE" });
                       setWindows((list) => list.filter((row) => row.id !== item.id));
                     }}
                   >

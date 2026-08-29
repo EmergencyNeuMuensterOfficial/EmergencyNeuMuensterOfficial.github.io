@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { apiHeaders } from "@/lib/clientApi";
 
 interface GuildCard {
   id: string;
@@ -39,7 +38,6 @@ export default function DashboardPage() {
     try {
       const response = await fetch("/api/dashboard/guilds", {
         cache: "no-store",
-        headers: apiHeaders(),
       });
       if (response.status === 401) {
         window.location.assign(`/api/auth/discord?next=${encodeURIComponent("/dashboard")}`);

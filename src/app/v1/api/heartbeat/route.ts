@@ -1,30 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { recordUptimeSample } from '../../../../lib/uptime';
 
 export const dynamic = 'force-dynamic';
 
-const HEARTBEAT_KEY = process.env.PUBLIC_API_HEARTBEAT_KEY || '';
-
 /**
- * Authenticated liveness ping (e.g. from the bot itself or an external
- * monitor). Each accepted call records one "online" sample for today's
- * bucket in the 30-day uptime history.
+ * Liveness ping from the bot or an external monitor. Each call records one
+ * "online" sample for today's bucket in the 30-day uptime history.
  *
  * Body (all optional): { online?: boolean, guilds?: number, users?: number }
  */
-export async function POST(request: NextRequest) {
-  if (!HEARTBEAT_KEY) {
-    return NextResponse.json(
-      { ok: false, error: 'Heartbeat endpoint is disabled (PUBLIC_API_HEARTBEAT_KEY not configured).' },
-      { status: 503 }
-    );
-  }
-
-  const provided = request.headers.get('x-api-key');
-  if (!provided || provided !== HEARTBEAT_KEY) {
-    return NextResponse.json({ ok: false, error: 'Invalid or missing API key.' }, { status: 401 });
-  }
-
+export async function POST(request: Request) {
   let body: Record<string, unknown> = {};
   try {
     const parsed = await request.json();

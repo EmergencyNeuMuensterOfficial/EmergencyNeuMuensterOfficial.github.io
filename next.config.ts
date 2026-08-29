@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Access-Control-Allow-Origin", value: "*" },
           { key: "Access-Control-Allow-Methods", value: "GET, POST, PATCH, OPTIONS" },
-          { key: "Access-Control-Allow-Headers", value: "Content-Type, x-api-key" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type" },
         ],
       },
       {
