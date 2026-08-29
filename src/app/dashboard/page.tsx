@@ -42,7 +42,7 @@ export default function DashboardPage() {
         headers: apiHeaders(),
       });
       if (response.status === 401) {
-        setError("You must be logged in to view your servers.");
+        window.location.assign(`/api/auth/discord?next=${encodeURIComponent("/dashboard")}`);
         return;
       }
       const payload = (await response.json()) as GuildsResponse;

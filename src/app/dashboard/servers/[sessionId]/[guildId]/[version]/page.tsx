@@ -69,6 +69,11 @@ function ServerDashboardInner() {
         headers: apiHeaders(),
       });
       if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) {
+          const next = `${window.location.pathname}${window.location.search}`;
+          window.location.assign(`/api/auth/discord?next=${encodeURIComponent(next)}`);
+          return;
+        }
         setError("You cannot manage this server.");
         return;
       }
