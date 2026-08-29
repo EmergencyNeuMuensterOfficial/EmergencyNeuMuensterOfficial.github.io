@@ -6,15 +6,23 @@ export const DISCORD_BOT_TOKEN = process.env.DISCORD_TOKEN || '';
 
 export const DASHBOARD_SCOPE = 'identify guilds';
 
-// A dashboard user must be able to manage the server itself. Moderation and
-// channel-specific permissions do not grant access to the server dashboard.
-const MANAGE_GUILD_PERMISSION_BITS = BigInt(0x8) | BigInt(0x20);
+// Server staff who can administer, configure, or moderate a guild may use its
+// OnboardX dashboard. The value from Discord is the user's total guild-level
+// permissions, so role-granted permissions are included.
+const DASHBOARD_PERMISSION_BITS =
+  BigInt(0x8) | // ADMINISTRATOR
+  BigInt(0x20) | // MANAGE_GUILD
+  BigInt(0x10) | // MANAGE_CHANNELS
+  BigInt(0x1000000) | // MANAGE_ROLES
+  BigInt(0x20000000) | // MANAGE_WEBHOOKS
+  BigInt(0x4) | // BAN_MEMBERS
+  BigInt(0x2); // KICK_MEMBERS
 
 export function guildHasAdminPermission(permissions: unknown): boolean {
   if (permissions == null) return false;
   try {
     const bits = BigInt(String(permissions));
-    return (bits & MANAGE_GUILD_PERMISSION_BITS) !== BigInt(0);
+    return (bits & DASHBOARD_PERMISSION_BITS) !== BigInt(0);
   } catch {
     return false;
   }
