@@ -54,6 +54,11 @@ export function DashboardSidebar() {
       const response = await fetch("/api/dashboard/guilds", {
         cache: "no-store",
       });
+      if (response.status === 401) {
+        const next = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/api/auth/discord?next=${encodeURIComponent(next)}`);
+        return;
+      }
       if (!response.ok) return;
       const payload = (await response.json()) as GuildsResponse;
       setGuilds(payload.data?.guilds ?? []);
