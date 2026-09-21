@@ -100,6 +100,16 @@ function sanitizeUpdates(body: unknown): Record<string, unknown> {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return updates;
 
   const allowedTopLevel = new Set(['prefix', 'language']);
+  // These are the bot's configurable sections. Account, ownership and
+  // subscription fields deliberately stay outside dashboard control.
+  const configurableSections = new Set([
+    'logging', 'verification', 'leveling', 'giveaway', 'poll', 'joinRoles',
+    'welcome', 'automod', 'antispam', 'reactionRoles', 'tickets', 'moderation',
+    'inviteTracking', 'modCases', 'advancedPermissions', 'tempVoice',
+    'integrations', 'sticky', 'afk', 'counting', 'applicationForms',
+    'scheduling', 'birthday', 'antinuke', 'altDetect', 'blocklist',
+    'honeypot', 'tempRoles', 'security',
+  ]);
 
   for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
     if (allowedTopLevel.has(key) && typeof value === 'string' && value.length <= 4) {
@@ -114,7 +124,30 @@ function sanitizeUpdates(body: unknown): Record<string, unknown> {
       }
       if (Object.keys(modules).length > 0) updates['modules'] = modules;
     }
+
+    if (key === 'settings' && value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const [section, settings] of Object.entries(value as Record<string, unknown>)) {
+        if (configurableSections.has(section) && isSafeConfigValue(settings)) {
+          updates[section] = settings;
+        }
+      }
+    }
   }
 
   return updates;
+}
+
+function isSafeConfigValue(value: unknown, depth = 0): boolean {
+  if (depth > 12) return false;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+    return typeof value !== 'string' || value.length <= 10_000;
+  }
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value)) return value.length <= 250 && value.every((item) => isSafeConfigValue(item, depth + 1));
+  if (typeof value !== 'object') return false;
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  return entries.length <= 250 && entries.every(([key, item]) =>
+    key !== '__proto__' && key !== 'prototype' && key !== 'constructor' && key.length <= 100 && isSafeConfigValue(item, depth + 1)
+  );
 }

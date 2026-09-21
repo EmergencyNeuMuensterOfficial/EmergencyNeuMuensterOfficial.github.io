@@ -25,12 +25,26 @@ const MODULES = [
   { key: "counting", label: "Counting", description: "Counting game channel" },
   { key: "modCases", label: "Moderation Cases", description: "Keep moderation case records" },
   { key: "applicationForms", label: "Application Forms", description: "Enable server application forms" },
+  { key: "honeypot", label: "Honeypot", description: "Detect suspicious member activity" },
+  { key: "tempRoles", label: "Temporary Roles", description: "Time-limited role assignments" },
+  { key: "security", label: "Security", description: "Server security protection" },
+  { key: "scheduling", label: "Scheduling", description: "Scheduled server actions" },
+  { key: "birthday", label: "Birthday", description: "Birthday and anniversary messages" },
+  { key: "antinuke", label: "Anti-Nuke", description: "Protect against destructive actions" },
+  { key: "altDetect", label: "Alt Detection", description: "Identify likely alternate accounts" },
+  { key: "blocklist", label: "Blocklist", description: "Shared safety blocklist checks" },
 ];
+
+const MODULE_CONFIG_KEYS: Record<string, string> = {
+  giveaways: "giveaway",
+  polls: "poll",
+};
 
 interface GuildConfig {
   prefix?: string;
   language?: string;
   modules?: Record<string, boolean>;
+  [key: string]: unknown;
 }
 
 interface ConfigResponse {
@@ -48,7 +62,8 @@ function ServerDashboardInner() {
     version: string;
   }>();
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") === "modules" ? "modules" : "general";
+  const requestedTab = searchParams.get("tab");
+  const tab = requestedTab === "modules" || requestedTab === "advanced" ? requestedTab : "general";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +73,10 @@ function ServerDashboardInner() {
   const [prefix, setPrefix] = useState("!");
   const [language, setLanguage] = useState("en");
   const [modules, setModules] = useState<Record<string, boolean>>({});
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
+  const [activeModule, setActiveModule] = useState(MODULES[0].key);
+  const [settingsJson, setSettingsJson] = useState("{}");
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +105,9 @@ function ServerDashboardInner() {
         setPrefix(config.prefix ?? "!");
         setLanguage(config.language ?? "en");
         setModules(config.modules ?? {});
+        setSettings(config);
+        const firstKey = MODULE_CONFIG_KEYS[MODULES[0].key] ?? MODULES[0].key;
+        setSettingsJson(JSON.stringify(config[firstKey] ?? {}, null, 2));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load settings.");
@@ -99,6 +121,22 @@ function ServerDashboardInner() {
   }, [load]);
 
   const save = async () => {
+    let nextSettings = settings;
+    if (tab === "advanced") {
+      try {
+        const parsed: unknown = JSON.parse(settingsJson);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("Module settings must be a JSON object.");
+        }
+        const section = MODULE_CONFIG_KEYS[activeModule] ?? activeModule;
+        nextSettings = { ...settings, [section]: parsed };
+        setSettings(nextSettings);
+        setJsonError(null);
+      } catch (err) {
+        setJsonError(err instanceof Error ? err.message : "Invalid JSON.");
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     setSavedAt(null);
@@ -106,12 +144,13 @@ function ServerDashboardInner() {
       const response = await fetch(`/api/dashboard/guilds/${params.guildId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prefix, language, modules }),
+        body: JSON.stringify({ prefix, language, modules, settings: nextSettings }),
       });
       const payload = (await response.json()) as ConfigResponse;
       if (!response.ok) throw new Error(payload.error || "Failed to save settings.");
       if (payload.data?.config) {
         setModules(payload.data.config.modules ?? {});
+        setSettings(payload.data.config);
       }
       setSavedAt(new Date().toLocaleTimeString());
     } catch (err) {
@@ -123,6 +162,13 @@ function ServerDashboardInner() {
 
   const toggleModule = (key: string) => {
     setModules((current) => ({ ...current, [key]: !current[key] }));
+  };
+
+  const selectModuleSettings = (key: string) => {
+    setActiveModule(key);
+    const section = MODULE_CONFIG_KEYS[key] ?? key;
+    setSettingsJson(JSON.stringify(settings[section] ?? {}, null, 2));
+    setJsonError(null);
   };
 
   if (loading) {
@@ -138,7 +184,7 @@ function ServerDashboardInner() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-discord-white">
-            {tab === "modules" ? "Modules" : "General"}
+            {tab === "modules" ? "Modules" : tab === "advanced" ? "Advanced configuration" : "General"}
           </h1>
           <p className="mt-1 text-sm text-discord-lighterGray">
             {guildName ?? "Server settings"}
@@ -196,7 +242,7 @@ function ServerDashboardInner() {
             </div>
           </div>
         </section>
-      ) : (
+      ) : tab === "modules" ? (
         <section className="mt-6 grid gap-4 sm:grid-cols-2">
           {MODULES.map((mod) => (
             <ModuleToggle
@@ -208,6 +254,53 @@ function ServerDashboardInner() {
               onCheckedChange={() => toggleModule(mod.key)}
             />
           ))}
+        </section>
+      ) : (
+        <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(15rem,0.85fr)_minmax(0,1.5fr)]">
+          <div className="rounded-2xl border border-discord-gray/20 bg-discord-darker p-3">
+            <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-discord-lightGray">
+              Module settings
+            </p>
+            <div className="max-h-[32rem] space-y-1 overflow-y-auto">
+              {MODULES.map((mod) => (
+                <button
+                  key={mod.key}
+                  type="button"
+                  onClick={() => selectModuleSettings(mod.key)}
+                  className={`w-full rounded-xl px-3 py-2 text-left text-sm transition ${
+                    activeModule === mod.key
+                      ? "bg-discord-blue text-white"
+                      : "text-discord-lighterGray hover:bg-discord-dark hover:text-discord-white"
+                  }`}
+                >
+                  <span className="block font-semibold">{mod.label}</span>
+                  <span className="block text-xs opacity-75">{modules[mod.key] ? "Enabled" : "Disabled"}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-discord-gray/20 bg-discord-darker p-6">
+            <h2 className="text-base font-semibold text-discord-white">
+              {MODULES.find((mod) => mod.key === activeModule)?.label} settings
+            </h2>
+            <p className="mt-1 text-sm text-discord-lighterGray">
+              Edit this module’s complete configuration. IDs are Discord channel, role, or user IDs. Valid JSON is required.
+            </p>
+            <textarea
+              value={settingsJson}
+              onChange={(event) => {
+                setSettingsJson(event.target.value);
+                setJsonError(null);
+              }}
+              spellCheck={false}
+              className="mt-4 min-h-80 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark p-4 font-mono text-xs leading-5 text-discord-white outline-none transition focus:border-discord-blue"
+              aria-label="Module configuration JSON"
+            />
+            {jsonError && <p className="mt-3 text-sm text-discord-red">{jsonError}</p>}
+            <p className="mt-3 text-xs text-discord-lightGray">
+              Save applies this module’s JSON along with the current module switches. Subscription and ownership settings cannot be changed here.
+            </p>
+          </div>
         </section>
       )}
     </div>

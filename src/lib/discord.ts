@@ -3,6 +3,13 @@ export const DISCORD_API_URL = 'https://discord.com/api/v10';
 export const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || process.env.DISCORD_CLIENT_ID || '';
 export const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 export const DISCORD_BOT_TOKEN = process.env.DISCORD_TOKEN || '';
+// Discord requires this value to exactly match a redirect URI registered in
+// the Developer Portal. Keep it configurable so preview and custom domains
+// do not silently use the wrong host.
+export const DISCORD_REDIRECT_URI =
+  process.env.DISCORD_REDIRECT_URI ||
+  process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI ||
+  '';
 
 export const DASHBOARD_SCOPE = 'identify guilds';
 
@@ -29,7 +36,7 @@ export function guildHasAdminPermission(permissions: unknown): boolean {
 }
 
 export function discordRedirectUri(origin: string): string {
-  return `${origin}/api/auth/discord/callback`;
+  return DISCORD_REDIRECT_URI || `${origin}/api/auth/discord/callback`;
 }
 
 export function oauthAuthorizeUrl(origin: string, state: string): string {

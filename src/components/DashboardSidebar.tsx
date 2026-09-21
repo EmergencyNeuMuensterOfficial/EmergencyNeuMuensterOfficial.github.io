@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, LayoutGrid, Settings } from "lucide-react";
+import { ChevronDown, LayoutGrid, Settings, SlidersHorizontal } from "lucide-react";
 
 interface GuildCard {
   id: string;
@@ -22,6 +22,7 @@ interface GuildsResponse {
 const ITEMS = [
   { id: "general", label: "General", icon: Settings },
   { id: "modules", label: "Modules", icon: LayoutGrid },
+  { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
 ];
 
 const VERSION = "v1";
@@ -43,7 +44,8 @@ export function DashboardSidebar() {
   const route = useServerDashboardPath();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") === "modules" ? "modules" : "general";
+  const requestedTab = searchParams.get("tab");
+  const tab = requestedTab === "modules" || requestedTab === "advanced" ? requestedTab : "general";
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const [guilds, setGuilds] = useState<GuildCard[]>([]);
@@ -92,7 +94,7 @@ export function DashboardSidebar() {
 
   const server = guilds.find((s) => s.id === route.guildId);
   const name = server?.name ?? "Server";
-  const tabQuery = tab === "modules" ? "?tab=modules" : "";
+  const tabQuery = tab === "general" ? "" : `?tab=${tab}`;
 
   const links = (
     <nav className="flex flex-col gap-1" aria-label="Server sections">
