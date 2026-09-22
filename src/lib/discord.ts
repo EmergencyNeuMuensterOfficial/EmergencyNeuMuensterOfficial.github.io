@@ -7,9 +7,7 @@ export const DISCORD_BOT_TOKEN = process.env.DISCORD_TOKEN || '';
 // the Developer Portal. Keep it configurable so preview and custom domains
 // do not silently use the wrong host.
 export const DISCORD_REDIRECT_URI =
-  process.env.DISCORD_REDIRECT_URI ||
-  process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI ||
-  '';
+  process.env.DISCORD_REDIRECT_URI || '';
 
 export const DASHBOARD_SCOPE = 'identify guilds';
 
