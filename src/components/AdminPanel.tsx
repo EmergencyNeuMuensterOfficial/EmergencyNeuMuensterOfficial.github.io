@@ -126,6 +126,13 @@ export function AdminPanel() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [windows, setWindows] = useState<Window[]>([]);
   const [title, setTitle] = useState("");
+  const [incidentSummary, setIncidentSummary] = useState("");
+  const [incidentImpact, setIncidentImpact] = useState("");
+  const [incidentCause, setIncidentCause] = useState("");
+  const [incidentDate, setIncidentDate] = useState("");
+  const [incidentDuration, setIncidentDuration] = useState("");
+  const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
+  const [incidentNotice, setIncidentNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [service, setService] = useState("Bot");
   const [incidentStatus, setIncidentStatus] = useState("Investigating");
   const [maintTitle, setMaintTitle] = useState("");
@@ -176,6 +183,12 @@ export function AdminPanel() {
             service: i.service,
             status: i.status,
             updated: i.updated ?? "",
+            summary: i.summary ?? "",
+            impact: i.impact ?? "",
+            cause: i.cause ?? "",
+            date: i.date ?? "",
+            duration: i.duration ?? "",
+            timeline: i.timeline ?? [],
           })));
           setWindows((payload.data.maintenance ?? []).map((w) => ({
             id: w.id,
@@ -257,6 +270,7 @@ export function AdminPanel() {
 
   async function postIncident() {
     if (!title.trim()) return;
+    setIncidentNotice(null);
     try {
       const res = await fetch("/api/admin/events", {
         method: "POST",
@@ -266,6 +280,11 @@ export function AdminPanel() {
           title: title.trim(),
           service,
           status: incidentStatus,
+          summary: incidentSummary,
+          impact: incidentImpact,
+          cause: incidentCause,
+          date: incidentDate,
+          duration: incidentDuration,
         }),
       });
       if (res.ok) {
@@ -278,16 +297,51 @@ export function AdminPanel() {
               service,
               status: incidentStatus,
               updated: "Just now",
+              summary: incidentSummary,
+              impact: incidentImpact,
+              cause: incidentCause,
+              date: incidentDate,
+              duration: incidentDuration,
             },
             ...list,
           ]);
+          setIncidentNotice({ type: "success", text: "Incident posted." });
+        } else {
+          setIncidentNotice({ type: "error", text: "Failed to post incident." });
         }
+      } else {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        setIncidentNotice({ type: "error", text: payload?.error ?? "Failed to post incident." });
       }
-    } catch {
-      // silently fail
+    } catch (error) {
+      setIncidentNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to post incident." });
     }
     setTitle("");
+    setIncidentSummary("");
+    setIncidentImpact("");
+    setIncidentCause("");
+    setIncidentDate("");
+    setIncidentDuration("");
     setIncidentStatus("Investigating");
+  }
+
+  async function saveIncident() {
+    if (!editingIncident || !editingIncident.title.trim()) return;
+    setIncidentNotice(null);
+    try {
+      const response = await fetch("/api/admin/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editingIncident, kind: "incident" }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to save incident.");
+      setIncidents((items) => items.map((item) => item.id === editingIncident.id ? { ...editingIncident, updated: "Just now" } : item));
+      setEditingIncident(null);
+      setIncidentNotice({ type: "success", text: "Incident updated." });
+    } catch (error) {
+      setIncidentNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to save incident." });
+    }
   }
 
   async function addWindow() {
@@ -513,6 +567,16 @@ export function AdminPanel() {
                 />
               </div>
             </div>
+            <label className="mt-3 block text-sm font-medium text-discord-lighterGray">
+              Summary
+              <textarea value={incidentSummary} onChange={(e) => setIncidentSummary(e.target.value)} className="mt-2 min-h-20 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" placeholder="What happened?" />
+            </label>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-discord-lighterGray">Impact<input value={incidentImpact} onChange={(e) => setIncidentImpact(e.target.value)} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" placeholder="Who was affected?" /></label>
+              <label className="block text-sm font-medium text-discord-lighterGray">Cause<input value={incidentCause} onChange={(e) => setIncidentCause(e.target.value)} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" placeholder="Known cause (optional)" /></label>
+              <label className="block text-sm font-medium text-discord-lighterGray">Date<input value={incidentDate} onChange={(e) => setIncidentDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" placeholder="e.g. 22 Sep 2026" /></label>
+              <label className="block text-sm font-medium text-discord-lighterGray">Duration<input value={incidentDuration} onChange={(e) => setIncidentDuration(e.target.value)} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" placeholder="e.g. 15 minutes" /></label>
+            </div>
             <button
               type="button"
               className="btn-primary mt-4"
@@ -520,7 +584,19 @@ export function AdminPanel() {
             >
               Post
             </button>
+            {incidentNotice && <p className={`mt-3 text-sm ${incidentNotice.type === "success" ? "text-discord-green" : "text-discord-red"}`}>{incidentNotice.text}</p>}
           </div>
+
+          {editingIncident && (
+            <div className="mt-4 rounded-2xl border border-discord-blue/40 bg-discord-darker p-4">
+              <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold text-discord-white">Edit incident</p><button type="button" onClick={() => setEditingIncident(null)} className="text-sm text-discord-lighterGray hover:text-discord-white">Cancel</button></div>
+              <label className="mt-3 block text-sm font-medium text-discord-lighterGray">Title<input value={editingIncident.title} onChange={(e) => setEditingIncident({ ...editingIncident, title: e.target.value })} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium text-discord-lighterGray">Service<input value={editingIncident.service} onChange={(e) => setEditingIncident({ ...editingIncident, service: e.target.value })} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label><div><p className="text-sm font-medium text-discord-lighterGray">Status</p><Dropdown value={editingIncident.status} options={INCIDENT_STATUSES} onChange={(status) => setEditingIncident({ ...editingIncident, status })} /></div></div>
+              <label className="mt-3 block text-sm font-medium text-discord-lighterGray">Summary<textarea value={editingIncident.summary ?? ""} onChange={(e) => setEditingIncident({ ...editingIncident, summary: e.target.value })} className="mt-2 min-h-20 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block text-sm font-medium text-discord-lighterGray">Impact<input value={editingIncident.impact ?? ""} onChange={(e) => setEditingIncident({ ...editingIncident, impact: e.target.value })} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label><label className="block text-sm font-medium text-discord-lighterGray">Cause<input value={editingIncident.cause ?? ""} onChange={(e) => setEditingIncident({ ...editingIncident, cause: e.target.value })} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label><label className="block text-sm font-medium text-discord-lighterGray">Date<input value={editingIncident.date ?? ""} onChange={(e) => setEditingIncident({ ...editingIncident, date: e.target.value })} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label><label className="block text-sm font-medium text-discord-lighterGray">Duration<input value={editingIncident.duration ?? ""} onChange={(e) => setEditingIncident({ ...editingIncident, duration: e.target.value })} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" /></label></div>
+              <button type="button" className="btn-primary mt-4" onClick={() => void saveIncident()}>Save changes</button>
+            </div>
+          )}
 
           {commands.length > 0 && (
             <div className="mt-4 rounded-2xl border border-discord-gray/20 bg-discord-darker p-4">
@@ -587,28 +663,12 @@ export function AdminPanel() {
                 <p className="mt-1 text-xs text-discord-lighterGray">
                   {item.service} · {item.updated}
                 </p>
-                  <div className="max-w-xs">
-                    <Dropdown
-                      value={item.status}
-                      options={INCIDENT_STATUSES}
-                      onChange={(next) => {
-                        void fetch("/api/admin/events", {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ id: item.id, kind: "incident", status: next }),
-                        });
-                        setIncidents((list) =>
-                          list.map((row) =>
-                            row.id === item.id
-                              ? { ...row, status: next, updated: "Just now" }
-                              : row,
-                          ),
-                        );
-                      }}
-                    />
-                </div>
+                {item.summary && <p className="mt-2 text-sm text-discord-lighterGray">{item.summary}</p>}
+                {(item.impact || item.cause || item.date || item.duration) && <p className="mt-2 text-xs text-discord-lightGray">{[item.impact && `Impact: ${item.impact}`, item.cause && `Cause: ${item.cause}`, item.date, item.duration].filter(Boolean).join(" · ")}</p>}
+                <button type="button" className="mt-3 inline-flex min-h-9 cursor-pointer items-center rounded-full bg-discord-dark px-3 text-sm font-semibold text-discord-white hover:bg-discord-gray/50" onClick={() => setEditingIncident({ ...item })}>Edit</button>
               </div>
             ))}
+            {incidents.length === 0 && <p className="px-4 py-6 text-center text-sm text-discord-lighterGray">No incidents recorded yet.</p>}
           </div>
         </div>
       ) : null}

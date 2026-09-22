@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hasAdminPanelAccess } from '../../../../lib/admin';
+import { fetchBotGuilds } from '../../../../lib/discord';
 import { listClosedBetaGuilds, setClosedBetaEnrollment } from '../../../../lib/mongo';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +11,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    return NextResponse.json({ ok: true, data: await listClosedBetaGuilds() });
+    const [configuredGuilds, botGuilds] = await Promise.all([
+      listClosedBetaGuilds(),
+      fetchBotGuilds().catch(() => []),
+    ]);
+    const names = new Map(botGuilds.map((guild) => [guild.id, guild.name]));
+    const data = configuredGuilds.map((guild) => ({
+      ...guild,
+      name: guild.name ?? names.get(guild.guildId) ?? null,
+    }));
+    return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Failed to load closed beta servers.' },

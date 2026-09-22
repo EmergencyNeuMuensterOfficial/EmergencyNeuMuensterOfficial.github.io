@@ -34,6 +34,7 @@ export async function GET() {
           duration: doc.duration ?? '',
           timeline: Array.isArray(doc.timeline) ? doc.timeline : [],
           createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : null,
+          updated: doc.updatedAt instanceof Date ? doc.updatedAt.toISOString() : null,
         })),
         maintenance: maintenance.map((doc) => ({
           id: String(doc._id),
