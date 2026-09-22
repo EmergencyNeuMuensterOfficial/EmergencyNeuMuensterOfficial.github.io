@@ -10,6 +10,7 @@ const TABS = [
   { id: "incidents", label: "Incidents" },
   { id: "maintenance", label: "Maintenance" },
   { id: "clusters", label: "Clusters" },
+  { id: "closed-beta", label: "Closed Beta" },
 ] as const;
 
 const INCIDENT_STATUSES = [
@@ -89,6 +90,12 @@ type Window = {
   notes?: string;
 };
 
+type ClosedBetaGuild = {
+  guildId: string;
+  name: string | null;
+  enabled: boolean;
+};
+
 function pill(status: string) {
   if (status === "Resolved" || status === "Online") {
     return "bg-discord-green/15 text-discord-green";
@@ -126,6 +133,11 @@ export function AdminPanel() {
   const [restarting, setRestarting] = useState<number | null>(null);
   const [openCluster, setOpenCluster] = useState<number | null>(null);
   const [guildQuery, setGuildQuery] = useState("");
+  const [betaGuilds, setBetaGuilds] = useState<ClosedBetaGuild[]>([]);
+  const [betaQuery, setBetaQuery] = useState("");
+  const [betaLoading, setBetaLoading] = useState(false);
+  const [betaUpdating, setBetaUpdating] = useState<string | null>(null);
+  const [betaNotice, setBetaNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const checkAccess = useCallback(async () => {
     try {
@@ -185,6 +197,25 @@ export function AdminPanel() {
       void loadData();
     }
   }, [access, loadData]);
+
+  const loadClosedBeta = useCallback(async () => {
+    setBetaLoading(true);
+    setBetaNotice(null);
+    try {
+      const response = await fetch("/api/admin/closed-beta", { cache: "no-store" });
+      const payload = (await response.json()) as { ok?: boolean; data?: ClosedBetaGuild[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load closed beta servers.");
+      setBetaGuilds(payload.data ?? []);
+    } catch (error) {
+      setBetaNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to load closed beta servers." });
+    } finally {
+      setBetaLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (access?.allowed && tab === "closed-beta") void loadClosedBeta();
+  }, [access, tab, loadClosedBeta]);
 
   async function handleLogin() {
     if (!password.trim()) return;
@@ -291,6 +322,31 @@ export function AdminPanel() {
     }
     setMaintTitle("");
     setMaintWhen("");
+  }
+
+  async function setClosedBeta(guild: ClosedBetaGuild, enabled: boolean) {
+    setBetaUpdating(guild.guildId);
+    setBetaNotice(null);
+    try {
+      const response = await fetch("/api/admin/closed-beta", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guildId: guild.guildId, enabled }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to update enrollment.");
+      setBetaGuilds((guilds) => guilds.map((item) =>
+        item.guildId === guild.guildId ? { ...item, enabled } : item,
+      ));
+      setBetaNotice({
+        type: "success",
+        text: `${guild.name ?? guild.guildId} is now ${enabled ? "enrolled in" : "removed from"} the Closed Beta.`,
+      });
+    } catch (error) {
+      setBetaNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to update enrollment." });
+    } finally {
+      setBetaUpdating(null);
+    }
   }
 
   if (!access) {
@@ -762,6 +818,78 @@ export function AdminPanel() {
             >
               {statusData?.maintenance?.enabled ? "Disable Maintenance" : "Enable Maintenance"}
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "closed-beta" ? (
+        <div className="mt-6">
+          <div className="rounded-2xl border border-discord-gray/20 bg-discord-darker p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-discord-white">Closed Beta enrollment</p>
+                <p className="mt-1 text-sm text-discord-lighterGray">
+                  Changes are saved to the bot configuration. The bot notifies owners automatically.
+                </p>
+              </div>
+              <button type="button" className="btn-primary" disabled={betaLoading} onClick={() => void loadClosedBeta()}>
+                {betaLoading ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+            <input
+              value={betaQuery}
+              onChange={(event) => setBetaQuery(event.target.value)}
+              className="mt-4 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue"
+              placeholder="Search by server name or Guild ID…"
+              aria-label="Search closed beta servers"
+            />
+          </div>
+
+          {betaNotice && (
+            <p className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+              betaNotice.type === "success"
+                ? "border-discord-green/40 bg-discord-green/10 text-discord-green"
+                : "border-discord-red/40 bg-discord-red/10 text-discord-red"
+            }`}>
+              {betaNotice.text}
+            </p>
+          )}
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
+            {betaLoading ? (
+              <p className="px-4 py-6 text-center text-sm text-discord-lighterGray">Loading server configurations...</p>
+            ) : (() => {
+              const query = betaQuery.trim().toLowerCase();
+              const filtered = query
+                ? betaGuilds.filter((guild) => guild.guildId.includes(query) || guild.name?.toLowerCase().includes(query))
+                : betaGuilds;
+              if (filtered.length === 0) {
+                return <p className="px-4 py-6 text-center text-sm text-discord-lighterGray">No configured servers match your search.</p>;
+              }
+              return filtered.map((guild) => (
+                <div key={guild.guildId} className="flex flex-wrap items-center gap-3 border-t border-discord-gray/20 px-4 py-4 first:border-t-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-discord-white">{guild.name ?? "Server name unavailable"}</p>
+                    <p className="mt-1 font-mono text-xs text-discord-lightGray">{guild.guildId}</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${guild.enabled ? "bg-discord-green/15 text-discord-green" : "bg-discord-gray/15 text-discord-lighterGray"}`}>
+                    {guild.enabled ? "Enrolled" : "Not enrolled"}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={betaUpdating === guild.guildId}
+                    onClick={() => void setClosedBeta(guild, !guild.enabled)}
+                    className={`inline-flex min-h-9 cursor-pointer items-center rounded-full px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-60 ${
+                      guild.enabled
+                        ? "bg-discord-red/15 text-discord-red hover:bg-discord-red/25"
+                        : "bg-discord-green/15 text-discord-green hover:bg-discord-green/25"
+                    }`}
+                  >
+                    {betaUpdating === guild.guildId ? "Saving..." : guild.enabled ? "Remove" : "Enroll"}
+                  </button>
+                </div>
+              ));
+            })()}
           </div>
         </div>
       ) : null}

@@ -137,3 +137,40 @@ export async function updateGuildConfig(
     { upsert: true }
   );
 }
+
+export interface ClosedBetaGuild {
+  guildId: string;
+  name: string | null;
+  enabled: boolean;
+}
+
+/** List existing guild configuration documents for the closed-beta console. */
+export async function listClosedBetaGuilds(): Promise<ClosedBetaGuild[]> {
+  const dbHandle = await connectDb();
+  const documents = await dbHandle.collection(COLLECTIONS.guildConfigs)
+    .find({}, { projection: { guildId: 1, guildName: 1, serverName: 1, name: 1, closedBeta: 1 } })
+    .toArray();
+
+  return documents
+    .map((document) => {
+      const guildId = typeof document.guildId === 'string'
+        ? document.guildId
+        : typeof document._id === 'string' ? document._id : '';
+      const name = [document.guildName, document.serverName, document.name]
+        .find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
+      const closedBeta = document.closedBeta as { enabled?: unknown } | undefined;
+      return { guildId, name, enabled: closedBeta?.enabled === true };
+    })
+    .filter((guild): guild is ClosedBetaGuild => /^\d{15,25}$/.test(guild.guildId))
+    .sort((left, right) => (left.name ?? left.guildId).localeCompare(right.name ?? right.guildId));
+}
+
+/** Change only the closed-beta flag on an existing guild configuration. */
+export async function setClosedBetaEnrollment(guildId: string, enabled: boolean): Promise<boolean> {
+  const dbHandle = await connectDb();
+  const result = await dbHandle.collection(COLLECTIONS.guildConfigs).updateOne(
+    { $or: [{ guildId }, { _id: guildId } as unknown as Filter<Document>] },
+    { $set: { 'closedBeta.enabled': enabled, updatedAt: new Date() } },
+  );
+  return result.matchedCount === 1;
+}
