@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCode, fetchDiscordUser, fetchUserGuilds } from '../../../../../lib/discord';
 import { createSessionToken, COOKIE_NAME } from '../../../../../lib/session';
 
+export const dynamic = 'force-dynamic';
+
+function callbackRedirect(origin: string, nextPath: string, login: string) {
+  const destination = new URL(nextPath, origin);
+  destination.searchParams.set('login', login);
+  return destination;
+}
+
 export async function GET(request: NextRequest) {
   const origin = new URL(request.url).origin;
   const url = new URL(request.url);
@@ -14,17 +22,17 @@ export async function GET(request: NextRequest) {
   const safeNext = nextPath.startsWith('/') && !nextPath.startsWith('//') && !nextPath.includes('\\') ? nextPath : '/dashboard';
 
   if (error) {
-    return NextResponse.redirect(`${origin}${safeNext}?login=error`);
+    return NextResponse.redirect(callbackRedirect(origin, safeNext, 'error'));
   }
   if (!code || !expectedState || !state || state !== expectedState) {
-    return NextResponse.redirect(`${origin}${safeNext}?login=invalid`);
+    return NextResponse.redirect(callbackRedirect(origin, safeNext, 'invalid'));
   }
 
   try {
     const token = await exchangeCode(origin, code);
 
     if (!token.scope.split(' ').includes('guilds')) {
-      return NextResponse.redirect(`${origin}${safeNext}?login=missing_scope`);
+      return NextResponse.redirect(callbackRedirect(origin, safeNext, 'missing_scope'));
     }
 
     const user = await fetchDiscordUser(token.access_token);
@@ -42,7 +50,7 @@ export async function GET(request: NextRequest) {
       refreshToken: token.refresh_token,
     });
 
-    const response = NextResponse.redirect(`${origin}${safeNext}`);
+    const response = NextResponse.redirect(callbackRedirect(origin, safeNext, 'complete'));
     response.cookies.set(COOKIE_NAME, sessionToken, {
       httpOnly: true,
       sameSite: 'lax',
@@ -67,6 +75,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (cause) {
     console.error('Discord OAuth callback failed:', cause);
-    return NextResponse.redirect(`${origin}${safeNext}?login=error`);
+    return NextResponse.redirect(callbackRedirect(origin, safeNext, 'error'));
   }
 }

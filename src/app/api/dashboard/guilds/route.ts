@@ -3,6 +3,8 @@ import { getSessionFromRequest, getAdminGuilds } from '../../../../lib/auth';
 import { guildIconUrl } from '../../../../lib/discord';
 import { COOKIE_NAME, createSessionToken } from '../../../../lib/session';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const session = await getSessionFromRequest(request);
   if (!session) {

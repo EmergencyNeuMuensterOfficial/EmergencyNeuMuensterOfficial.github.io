@@ -36,10 +36,25 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
+      const login = new URLSearchParams(window.location.search).get("login");
+      const loginErrors: Record<string, string> = {
+        invalid: "Discord login could not be verified. Please start the login again.",
+        error: "Discord login failed. Please try again.",
+        missing_scope: "Discord did not grant the required server access permission.",
+      };
+      if (login && loginErrors[login]) {
+        setError(loginErrors[login]);
+        return;
+      }
+
       const response = await fetch("/api/dashboard/guilds", {
         cache: "no-store",
       });
       if (response.status === 401) {
+        if (login === "complete") {
+          setError("Your Discord login completed, but the website could not restore its secure session. Please try logging in again.");
+          return;
+        }
         window.location.assign(`/api/auth/discord?next=${encodeURIComponent("/dashboard")}`);
         return;
       }
@@ -72,15 +87,13 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-lg font-semibold text-discord-white">Server picker</h1>
         <p className="mt-1 text-sm text-discord-red">{error}</p>
-        {!error.includes("logged in") && (
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="btn-primary mt-4"
-          >
-            Retry
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => window.location.assign(`/api/auth/discord?next=${encodeURIComponent("/dashboard")}`)}
+          className="btn-primary mt-4"
+        >
+          Try Discord login again
+        </button>
       </div>
     );
   }
