@@ -24,7 +24,8 @@ async function fetchUserGuildsSafe(session: SessionData): Promise<{ guilds: impo
   try {
     const guilds = await fetchUserGuilds(session.accessToken);
     return { guilds };
-  } catch {
+  } catch (accessError) {
+    console.warn('Discord guild access-token request failed; trying refresh:', accessError);
     if (!session.refreshToken) return null;
     try {
       const newToken = await refreshAccessToken(session.refreshToken);
@@ -35,7 +36,8 @@ async function fetchUserGuildsSafe(session: SessionData): Promise<{ guilds: impo
         refreshToken: newToken.refresh_token,
       };
       return { guilds, refreshedSession };
-    } catch {
+    } catch (refreshError) {
+      console.error('Discord OAuth refresh failed:', refreshError);
       return null;
     }
   }

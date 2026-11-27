@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import { PageFrame } from "@/components/Header";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({
     <html lang="en" className={sfCompact.variable}>
       <body className={`${sfCompact.className} antialiased`}>
         <PageFrame>{children}</PageFrame>
+        <Analytics />
       </body>
     </html>
   );

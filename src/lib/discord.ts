@@ -87,6 +87,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
   });
+  // Keep the refresh request tied to the same registered callback used for
+  // the original authorization-code exchange.
+  if (DISCORD_REDIRECT_URI) body.set('redirect_uri', DISCORD_REDIRECT_URI);
 
   const response = await fetch(`${DISCORD_API_URL}/oauth2/token`, {
     method: 'POST',
