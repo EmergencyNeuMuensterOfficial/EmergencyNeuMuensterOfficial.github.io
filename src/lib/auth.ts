@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
+import { randomUUID } from 'crypto';
 import { DISCORD_BOT_TOKEN, fetchUserGuilds, fetchBotGuilds, refreshAccessToken, userCanManageGuild, type TokenResponse } from './discord';
 import { verifySessionToken, COOKIE_NAME, createSessionToken, type SessionData } from './session';
+import { claimOAuthRefresh, completeOAuthRefresh, getOAuthSession, releaseOAuthRefresh } from './mongo';
 
 // Discord rotates refresh tokens. Multiple dashboard requests can otherwise
 // refresh the same token simultaneously; the losing request then receives
@@ -19,7 +21,14 @@ function refreshOnce(refreshToken: string): Promise<TokenResponse> {
 }
 
 export async function getSessionFromRequest(request: NextRequest): Promise<SessionData | null> {
-  return verifySessionToken(request.cookies.get(COOKIE_NAME)?.value);
+  const cookieSession = verifySessionToken(request.cookies.get(COOKIE_NAME)?.value);
+  if (!cookieSession?.sessionId) return cookieSession;
+  try {
+    return await getOAuthSession(cookieSession.sessionId) ?? cookieSession;
+  } catch (error) {
+    console.error('Failed to load server-side OAuth session:', error);
+    return cookieSession;
+  }
 }
 
 export interface AdminGuildInfo {
@@ -43,18 +52,50 @@ async function fetchUserGuildsSafe(session: SessionData): Promise<{ guilds: impo
   } catch (accessError) {
     console.warn('Discord guild access-token request failed; trying refresh:', accessError);
     if (!session.refreshToken) return null;
+    const lockId = randomUUID();
     try {
+      // On Vercel, concurrent API routes can execute in separate functions.
+      // MongoDB is the shared refresh-token lock, not process memory alone.
+      const claimed = session.sessionId
+        ? await claimOAuthRefresh(session.sessionId, session.refreshToken, lockId)
+        : true;
+
+      if (!claimed && session.sessionId) {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const latest = await getOAuthSession(session.sessionId);
+          if (latest && latest.refreshToken !== session.refreshToken) {
+            const guilds = await fetchUserGuilds(latest.accessToken);
+            return { guilds, refreshedSession: latest };
+          }
+        }
+        throw new Error('Another request is already refreshing this Discord session.');
+      }
+
       const newToken = await refreshOnce(session.refreshToken);
-      const guilds = await fetchUserGuilds(newToken.access_token);
       const refreshedSession: SessionData = {
         ...session,
         accessToken: newToken.access_token,
         refreshToken: newToken.refresh_token,
       };
+      if (refreshedSession.sessionId) await completeOAuthRefresh(refreshedSession as SessionData & { sessionId: string }, lockId);
+      const guilds = await fetchUserGuilds(newToken.access_token);
       return { guilds, refreshedSession };
     } catch (refreshError) {
+      if (session.sessionId) {
+        const latest = await getOAuthSession(session.sessionId).catch(() => null);
+        if (latest && latest.refreshToken !== session.refreshToken) {
+          try {
+            return { guilds: await fetchUserGuilds(latest.accessToken), refreshedSession: latest };
+          } catch {
+            // Fall through to the diagnostic below.
+          }
+        }
+      }
       console.error('Discord OAuth refresh failed:', refreshError);
       return null;
+    } finally {
+      if (session.sessionId) await releaseOAuthRefresh(session.sessionId, lockId).catch(() => {});
     }
   }
 }

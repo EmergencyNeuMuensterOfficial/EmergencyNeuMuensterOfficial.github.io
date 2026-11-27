@@ -1,4 +1,5 @@
 import { MongoClient, type Db, type Filter, type Document } from 'mongodb';
+import type { SessionData } from './session';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
 const MONGODB_DATABASE = process.env.MONGODB_DATABASE || process.env.DB_NAME || 'OnboardX';
@@ -108,7 +109,75 @@ export const COLLECTIONS = {
   maintenanceWindows: 'maintenance_windows',
   applicationForms: 'application_forms',
   formSubmissions: 'form_submissions',
+  oauthSessions: 'oauth_sessions',
 } as const;
+
+function asSessionData(document: Document | null): SessionData | null {
+  if (!document || typeof document.sessionId !== 'string' || typeof document.userId !== 'string' ||
+    typeof document.username !== 'string' || typeof document.accessToken !== 'string' ||
+    typeof document.refreshToken !== 'string') return null;
+  return {
+    sessionId: document.sessionId,
+    userId: document.userId,
+    username: document.username,
+    avatar: typeof document.avatar === 'string' ? document.avatar : null,
+    globalName: typeof document.globalName === 'string' ? document.globalName : null,
+    discriminator: typeof document.discriminator === 'string' ? document.discriminator : '0',
+    banner: typeof document.banner === 'string' ? document.banner : null,
+    accentColor: typeof document.accentColor === 'number' ? document.accentColor : null,
+    accessToken: document.accessToken,
+    refreshToken: document.refreshToken,
+  };
+}
+
+export async function storeOAuthSession(session: SessionData & { sessionId: string }): Promise<void> {
+  const dbHandle = await connectDb();
+  const now = new Date();
+  await dbHandle.collection(COLLECTIONS.oauthSessions).updateOne(
+    { _id: session.sessionId } as unknown as Filter<Document>,
+    { $set: { ...session, expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), updatedAt: now }, $setOnInsert: { createdAt: now } },
+    { upsert: true },
+  );
+}
+
+export async function getOAuthSession(sessionId: string): Promise<SessionData | null> {
+  const dbHandle = await connectDb();
+  return asSessionData(await dbHandle.collection(COLLECTIONS.oauthSessions).findOne({ _id: sessionId, expiresAt: { $gt: new Date() } } as unknown as Filter<Document>));
+}
+
+/** Claim a short distributed lease before exchanging a rotating Discord refresh token. */
+export async function claimOAuthRefresh(sessionId: string, refreshToken: string, lockId: string): Promise<boolean> {
+  const dbHandle = await connectDb();
+  const now = new Date();
+  const result = await dbHandle.collection(COLLECTIONS.oauthSessions).updateOne(
+    {
+      _id: sessionId,
+      refreshToken,
+      $or: [{ refreshLockUntil: { $exists: false } }, { refreshLockUntil: { $lt: now } }],
+    } as unknown as Filter<Document>,
+    { $set: { refreshLockId: lockId, refreshLockUntil: new Date(now.getTime() + 15_000), updatedAt: now } },
+  );
+  return result.modifiedCount === 1;
+}
+
+export async function completeOAuthRefresh(session: SessionData & { sessionId: string }, lockId: string): Promise<void> {
+  const dbHandle = await connectDb();
+  await dbHandle.collection(COLLECTIONS.oauthSessions).updateOne(
+    { _id: session.sessionId, refreshLockId: lockId } as unknown as Filter<Document>,
+    {
+      $set: { accessToken: session.accessToken, refreshToken: session.refreshToken, updatedAt: new Date() },
+      $unset: { refreshLockId: '', refreshLockUntil: '' },
+    },
+  );
+}
+
+export async function releaseOAuthRefresh(sessionId: string, lockId: string): Promise<void> {
+  const dbHandle = await connectDb();
+  await dbHandle.collection(COLLECTIONS.oauthSessions).updateOne(
+    { _id: sessionId, refreshLockId: lockId } as unknown as Filter<Document>,
+    { $unset: { refreshLockId: '', refreshLockUntil: '' } },
+  );
+}
 
 export async function getGuildConfig(guildId: string): Promise<Document | null> {
   const dbHandle = await connectDb();

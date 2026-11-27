@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCode, fetchDiscordUser, fetchUserGuilds } from '../../../../../lib/discord';
-import { createSessionToken, COOKIE_NAME } from '../../../../../lib/session';
+import { createSessionToken, COOKIE_NAME, generateState } from '../../../../../lib/session';
+import { storeOAuthSession } from '../../../../../lib/mongo';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,8 @@ export async function GET(request: NextRequest) {
     const user = await fetchDiscordUser(token.access_token);
     await fetchUserGuilds(token.access_token).catch(() => []); // keep the guilds scope fresh; filtering happens in /api/dashboard/guilds
 
-    const sessionToken = createSessionToken({
+    const session = {
+      sessionId: generateState(),
       userId: user.id,
       username: user.username,
       avatar: user.avatar,
@@ -48,7 +50,11 @@ export async function GET(request: NextRequest) {
       accentColor: typeof user.accent_color === 'number' ? user.accent_color : null,
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
-    });
+    };
+    // Persist OAuth credentials server-side. The browser cookie only contains
+    // a signed session copy, while refresh-token rotation is coordinated in MongoDB.
+    await storeOAuthSession(session);
+    const sessionToken = createSessionToken(session);
 
     const response = NextResponse.redirect(callbackRedirect(origin, safeNext, 'complete'));
     response.cookies.set(COOKIE_NAME, sessionToken, {

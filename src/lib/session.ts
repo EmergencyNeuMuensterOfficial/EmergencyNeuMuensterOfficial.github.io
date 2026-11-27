@@ -5,6 +5,8 @@ const COOKIE_NAME = 'onboardx_session';
 const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export interface SessionData {
+  /** Opaque key for the server-side Discord OAuth token record. */
+  sessionId?: string;
   userId: string;
   username: string;
   avatar: string | null;

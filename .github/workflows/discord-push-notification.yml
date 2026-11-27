@@ -1,0 +1,57 @@
+name: Discord push notification
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send repository update to Discord
+        uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          script: |
+            const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+            if (!webhookUrl) {
+              core.warning('DISCORD_WEBHOOK_URL is not configured; skipping the Discord notification.');
+              return;
+            }
+
+            const commit = context.payload.head_commit ?? {};
+            const shortSha = (context.sha ?? '').slice(0, 7);
+            const message = String(commit.message ?? 'No commit message').slice(0, 1_000);
+            const author = commit.author?.name ?? context.actor;
+            const compareUrl = context.payload.compare ?? `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+
+            const payload = {
+              embeds: [{
+                title: 'Repository updated',
+                color: 0x5865f2,
+                url: compareUrl,
+                fields: [
+                  { name: 'Repository', value: `\`${context.repo.owner}/${context.repo.repo}\``, inline: true },
+                  { name: 'Branch', value: `\`${context.ref.replace('refs/heads/', '')}\``, inline: true },
+                  { name: 'Commit', value: `[${shortSha}](${compareUrl})`, inline: true },
+                  { name: 'Author', value: author, inline: true },
+                  { name: 'Pushed by', value: context.actor, inline: true },
+                  { name: 'Message', value: message },
+                ],
+                timestamp: new Date().toISOString(),
+                footer: { text: 'OnboardX development updates' },
+              }],
+            };
+
+            const response = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+              core.setFailed(`Discord webhook failed (${response.status}): ${await response.text()}`);
+            }
