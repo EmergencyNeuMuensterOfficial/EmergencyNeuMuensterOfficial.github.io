@@ -201,9 +201,12 @@ function ServerDashboardInner() {
       </div>
 
       {error && (
-        <p className="mt-4 rounded-2xl border border-discord-red/40 bg-discord-red/10 px-4 py-3 text-sm text-discord-red">
-          {error}
-        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-discord-red/40 bg-discord-red/10 px-4 py-3 text-sm text-discord-red">
+          <span>{error}</span>
+          <button type="button" onClick={() => void load()} className="rounded-full px-3 py-1 text-xs font-semibold text-discord-white hover:bg-discord-red/20">
+            Retry
+          </button>
+        </div>
       )}
 
       {savedAt && (

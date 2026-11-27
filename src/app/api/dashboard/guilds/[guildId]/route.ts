@@ -3,6 +3,8 @@ import { getSessionFromRequest, getDiscordGuild } from '../../../../../lib/auth'
 import { getGuildConfig, updateGuildConfig } from '../../../../../lib/mongo';
 import { COOKIE_NAME, createSessionToken } from '../../../../../lib/session';
 
+export const dynamic = 'force-dynamic';
+
 function withRefreshCookie(response: NextResponse, refreshedSession: { userId: string; username: string; avatar: string | null; globalName: string | null; discriminator: string; banner: string | null; accentColor: number | null; accessToken: string; refreshToken: string } | undefined): NextResponse {
   if (!refreshedSession) return response;
   response.cookies.set(COOKIE_NAME, createSessionToken(refreshedSession), {
@@ -26,9 +28,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!guild) {
     const resp = NextResponse.json(
       tokenFailed
-        ? { error: 'Your login session expired. Please sign in again.' }
+        ? { error: 'Your website session is valid, but Discord could not verify your server access. Please try again shortly.', code: 'DISCORD_VERIFICATION_FAILED' }
         : { error: 'You do not have permission to manage this server.' },
-      { status: tokenFailed ? 401 : 403 },
+      { status: tokenFailed ? 503 : 403 },
     );
     return withRefreshCookie(resp, refreshedSession);
   }
@@ -63,9 +65,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!guild) {
     const resp = NextResponse.json(
       tokenFailed
-        ? { error: 'Your login session expired. Please sign in again.' }
+        ? { error: 'Your website session is valid, but Discord could not verify your server access. Please try again shortly.', code: 'DISCORD_VERIFICATION_FAILED' }
         : { error: 'You do not have permission to manage this server.' },
-      { status: tokenFailed ? 401 : 403 },
+      { status: tokenFailed ? 503 : 403 },
     );
     return withRefreshCookie(resp, refreshedSession);
   }

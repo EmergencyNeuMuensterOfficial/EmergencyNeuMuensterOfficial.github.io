@@ -51,11 +51,9 @@ export default function DashboardPage() {
         cache: "no-store",
       });
       if (response.status === 401) {
-        if (login === "complete") {
-          setError("Your Discord login completed, but the website could not restore its secure session. Please try logging in again.");
-          return;
-        }
-        window.location.assign(`/api/auth/discord?next=${encodeURIComponent("/dashboard")}`);
+        setError(login === "complete"
+          ? "Your Discord login completed, but the website could not restore its secure session."
+          : "Your dashboard session is no longer available.");
         return;
       }
       const payload = (await response.json()) as GuildsResponse;
