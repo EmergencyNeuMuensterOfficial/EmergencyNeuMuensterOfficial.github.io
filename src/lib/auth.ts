@@ -1,6 +1,22 @@
 import { NextRequest } from 'next/server';
-import { DISCORD_BOT_TOKEN, fetchUserGuilds, fetchBotGuilds, refreshAccessToken, userCanManageGuild } from './discord';
+import { DISCORD_BOT_TOKEN, fetchUserGuilds, fetchBotGuilds, refreshAccessToken, userCanManageGuild, type TokenResponse } from './discord';
 import { verifySessionToken, COOKIE_NAME, createSessionToken, type SessionData } from './session';
+
+// Discord rotates refresh tokens. Multiple dashboard requests can otherwise
+// refresh the same token simultaneously; the losing request then receives
+// `invalid_grant` and incorrectly treats a valid website session as failed.
+const refreshInFlight = new Map<string, Promise<TokenResponse>>();
+
+function refreshOnce(refreshToken: string): Promise<TokenResponse> {
+  const active = refreshInFlight.get(refreshToken);
+  if (active) return active;
+
+  const request = refreshAccessToken(refreshToken).finally(() => {
+    refreshInFlight.delete(refreshToken);
+  });
+  refreshInFlight.set(refreshToken, request);
+  return request;
+}
 
 export async function getSessionFromRequest(request: NextRequest): Promise<SessionData | null> {
   return verifySessionToken(request.cookies.get(COOKIE_NAME)?.value);
@@ -28,7 +44,7 @@ async function fetchUserGuildsSafe(session: SessionData): Promise<{ guilds: impo
     console.warn('Discord guild access-token request failed; trying refresh:', accessError);
     if (!session.refreshToken) return null;
     try {
-      const newToken = await refreshAccessToken(session.refreshToken);
+      const newToken = await refreshOnce(session.refreshToken);
       const guilds = await fetchUserGuilds(newToken.access_token);
       const refreshedSession: SessionData = {
         ...session,

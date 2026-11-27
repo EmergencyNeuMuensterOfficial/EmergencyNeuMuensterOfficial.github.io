@@ -53,6 +53,7 @@ interface ConfigResponse {
     config?: GuildConfig;
   };
   error?: string;
+  code?: string;
 }
 
 function ServerDashboardInner() {
@@ -77,10 +78,12 @@ function ServerDashboardInner() {
   const [activeModule, setActiveModule] = useState(MODULES[0].key);
   const [settingsJson, setSettingsJson] = useState("{}");
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [requiresDiscordReconnect, setRequiresDiscordReconnect] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setRequiresDiscordReconnect(false);
     try {
       const response = await fetch(`/api/dashboard/guilds/${params.guildId}`, {
         cache: "no-store",
@@ -97,6 +100,7 @@ function ServerDashboardInner() {
       const payload = (await response.json()) as ConfigResponse;
       if (!response.ok && response.status !== 404) {
         setError(payload.error || "Failed to load settings.");
+        setRequiresDiscordReconnect(payload.code === "DISCORD_VERIFICATION_FAILED");
         return;
       }
       setGuildName(payload.data?.guild?.name ?? null);
@@ -206,6 +210,11 @@ function ServerDashboardInner() {
           <button type="button" onClick={() => void load()} className="rounded-full px-3 py-1 text-xs font-semibold text-discord-white hover:bg-discord-red/20">
             Retry
           </button>
+          {requiresDiscordReconnect && (
+            <button type="button" onClick={() => window.location.assign(`/api/auth/discord?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`)} className="rounded-full px-3 py-1 text-xs font-semibold text-discord-white hover:bg-discord-red/20">
+              Reconnect Discord
+            </button>
+          )}
         </div>
       )}
 
