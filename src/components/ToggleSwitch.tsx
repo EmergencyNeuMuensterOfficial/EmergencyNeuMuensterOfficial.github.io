@@ -8,12 +8,14 @@ export function ModuleToggle({
   defaultOn,
   checked,
   onCheckedChange,
+  disabled = false,
 }: {
   label: string;
   description?: string;
   defaultOn: boolean;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   const [internalOn, setInternalOn] = useState(defaultOn);
   const [spin, setSpin] = useState<"on" | "off" | null>(null);
@@ -28,14 +30,15 @@ export function ModuleToggle({
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => {
-        if (spin) return;
+        if (spin || disabled) return;
         const next = !on;
         setSpin(next ? "on" : "off");
         if (checked === undefined) setInternalOn(next);
         onCheckedChange?.(next);
       }}
-      className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-discord-gray/20 bg-discord-dark p-4 text-left hover:bg-discord-gray/30"
+      className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-discord-gray/20 bg-discord-dark p-4 text-left hover:bg-discord-gray/30 disabled:cursor-wait disabled:opacity-60"
     >
       <span className="min-w-0 pr-3">
         <span className="block text-sm font-semibold text-discord-white">

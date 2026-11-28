@@ -182,6 +182,7 @@ function AccountMenu({
 export function HeaderBar() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<MeUser | null>(null);
+  const [inviteLocked, setInviteLocked] = useState(false);
 
   const loadUser = useCallback(async () => {
     try {
@@ -196,6 +197,13 @@ export function HeaderBar() {
   useEffect(() => {
     void loadUser();
   }, [loadUser]);
+
+  useEffect(() => {
+    void fetch("/api/site-settings", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { inviteLock?: boolean }) => setInviteLocked(data.inviteLock === true))
+      .catch(() => setInviteLocked(false));
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -222,14 +230,14 @@ export function HeaderBar() {
             >
               Support
             </a>
-            <a
+            {!inviteLocked && <a
               href={LINKS.invite}
               className="inline-flex min-h-9 cursor-pointer items-center rounded-full bg-discord-blue px-4 text-sm font-semibold text-white transition-colors duration-200 hover:bg-discord-blue/80"
               target="_blank"
               rel="noreferrer"
             >
               Add to Discord
-            </a>
+            </a>}
             <AccountMenu user={user} onLogout={handleLogout} />
           </div>
 
@@ -270,14 +278,14 @@ export function HeaderBar() {
                   Log in with Discord
                 </a>
               )}
-              <a
+              {!inviteLocked && <a
                 href={LINKS.invite}
                 className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full bg-discord-blue px-4 text-sm font-semibold text-white hover:bg-discord-blue/80"
                 target="_blank"
                 rel="noreferrer"
               >
                 Add to Discord
-              </a>
+              </a>}
               <a
                 href={LINKS.support}
                 className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-discord-gray bg-discord-dark px-4 text-sm font-semibold text-discord-white hover:bg-discord-gray/50"

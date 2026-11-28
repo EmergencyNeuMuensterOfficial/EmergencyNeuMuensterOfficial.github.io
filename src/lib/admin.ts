@@ -5,6 +5,36 @@ import { verifySessionToken, COOKIE_NAME } from './session';
 
 export const ADMIN_COOKIE_NAME = 'onboardx_admin';
 
+export interface DashboardControls {
+  readOnly: boolean;
+  inviteLock: boolean;
+}
+
+const DASHBOARD_CONTROLS_ID = 'dashboardControls';
+
+export async function fetchDashboardControls(): Promise<DashboardControls> {
+  const db = await connectDb();
+  const doc = await db.collection(COLLECTIONS.systemDocs).findOne({ _id: DASHBOARD_CONTROLS_ID } as never);
+  return {
+    readOnly: doc?.readOnly === true,
+    inviteLock: doc?.inviteLock === true,
+  };
+}
+
+/** Update only the named dashboard controls, preserving unrelated system data. */
+export async function updateDashboardControls(updates: Partial<DashboardControls>): Promise<DashboardControls> {
+  const db = await connectDb();
+  const setFields: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof updates.readOnly === 'boolean') setFields.readOnly = updates.readOnly;
+  if (typeof updates.inviteLock === 'boolean') setFields.inviteLock = updates.inviteLock;
+  await db.collection(COLLECTIONS.systemDocs).updateOne(
+    { _id: DASHBOARD_CONTROLS_ID } as never,
+    { $set: setFields, $setOnInsert: { createdAt: new Date() } },
+    { upsert: true },
+  );
+  return fetchDashboardControls();
+}
+
 const ADMIN_KEY = process.env.OBNX_SECRECT_KEY ?? '';
 const ADMIN_TTL_MS = 8 * 60 * 60 * 1000;
 

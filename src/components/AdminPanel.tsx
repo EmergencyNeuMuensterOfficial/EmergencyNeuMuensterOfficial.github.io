@@ -42,6 +42,7 @@ type AdminStatus = {
   readyClusters: number;
   averagePing: number;
   maintenance: { enabled: boolean; message: string | null };
+  controls?: { readOnly: boolean; inviteLock: boolean };
   clusters?: Array<{
     clusterId: number;
     guilds: number;
@@ -146,6 +147,8 @@ export function AdminPanel() {
   const [betaLoading, setBetaLoading] = useState(false);
   const [betaUpdating, setBetaUpdating] = useState<string | null>(null);
   const [betaNotice, setBetaNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [controls, setControls] = useState({ readOnly: false, inviteLock: false });
+  const [updatingControl, setUpdatingControl] = useState<"readOnly" | "inviteLock" | null>(null);
 
   const checkAccess = useCallback(async () => {
     try {
@@ -169,10 +172,11 @@ export function AdminPanel() {
         fetch("/api/status-events", { cache: "no-store" }),
       ]);
       if (statusRes.ok) {
-        const payload = (await statusRes.json()) as { ok?: boolean; data?: { status: AdminStatus; commands: ControlCommand[] } };
+        const payload = (await statusRes.json()) as { ok?: boolean; data?: { status: AdminStatus; commands: ControlCommand[]; controls?: { readOnly: boolean; inviteLock: boolean } } };
         if (payload.ok && payload.data) {
           setStatusData(payload.data.status);
           setCommands(payload.data.commands);
+          setControls(payload.data.controls ?? { readOnly: false, inviteLock: false });
         }
       }
       if (eventsRes.ok) {
@@ -268,6 +272,21 @@ export function AdminPanel() {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async function updateControl(key: "readOnly" | "inviteLock", value: boolean) {
+    setUpdatingControl(key);
+    try {
+      const response = await fetch("/api/admin/controls", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; data?: { readOnly: boolean; inviteLock: boolean } };
+      if (response.ok && payload.ok && payload.data) setControls(payload.data);
+    } finally {
+      setUpdatingControl(null);
     }
   }
 
@@ -520,11 +539,17 @@ export function AdminPanel() {
               label="Read-only mode"
               description="Block dashboard writes. Verification and the bot stay up."
               defaultOn={false}
+              checked={controls.readOnly}
+              disabled={updatingControl !== null}
+              onCheckedChange={(next) => void updateControl("readOnly", next)}
             />
             <ModuleToggle
               label="Invite lock"
               description="Hide Add to Discord until staff turns this off."
               defaultOn={false}
+              checked={controls.inviteLock}
+              disabled={updatingControl !== null}
+              onCheckedChange={(next) => void updateControl("inviteLock", next)}
             />
           </div>
         </div>

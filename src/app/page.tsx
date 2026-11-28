@@ -1,7 +1,19 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { FeaturePager } from "@/components/FeaturePager";
 import { FEATURES, LINKS } from "@/lib/content";
 
 export default function HomePage() {
+  const [inviteLocked, setInviteLocked] = useState(false);
+
+  useEffect(() => {
+    void fetch("/api/site-settings", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { inviteLock?: boolean }) => setInviteLocked(data.inviteLock === true))
+      .catch(() => setInviteLocked(false));
+  }, []);
+
   return (
     <div>
       <section className="sticky top-0 z-0 flex min-h-screen flex-col items-center justify-center bg-discord-darkest px-6 text-center">
@@ -11,14 +23,14 @@ export default function HomePage() {
         <p className="mt-4 max-w-md text-sm leading-relaxed text-discord-lighterGray">
           Welcome. Verify. Join with confidence.
         </p>
-        <a
+        {!inviteLocked && <a
           href={LINKS.invite}
           className="btn-primary mt-8"
           target="_blank"
           rel="noreferrer"
         >
           Add to Discord
-        </a>
+        </a>}
       </section>
 
       {FEATURES.map((feature, index) => (

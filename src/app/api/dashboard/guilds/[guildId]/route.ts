@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, getDiscordGuild } from '../../../../../lib/auth';
 import { getGuildConfig, updateGuildConfig } from '../../../../../lib/mongo';
 import { COOKIE_NAME, createSessionToken } from '../../../../../lib/session';
+import { fetchDashboardControls } from '../../../../../lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const session = await getSessionFromRequest(request);
   if (!session) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  const controls = await fetchDashboardControls().catch(() => null);
+  if (controls?.readOnly) {
+    return NextResponse.json({ error: 'Dashboard changes are temporarily disabled by staff.', code: 'READ_ONLY' }, { status: 423 });
   }
 
   const { guild, refreshedSession, tokenFailed } = await getDiscordGuild(session, guildId);
