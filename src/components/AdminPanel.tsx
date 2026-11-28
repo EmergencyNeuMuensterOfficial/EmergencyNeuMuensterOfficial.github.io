@@ -11,6 +11,7 @@ const TABS = [
   { id: "maintenance", label: "Maintenance" },
   { id: "clusters", label: "Clusters" },
   { id: "closed-beta", label: "Closed Beta" },
+  { id: "blocks", label: "Bot Blocks" },
 ] as const;
 
 const INCIDENT_STATUSES = [
@@ -97,6 +98,13 @@ type ClosedBetaGuild = {
   enabled: boolean;
 };
 
+type BotAccessBlock = {
+  id: string;
+  type: "guild" | "user";
+  targetId: string;
+  createdAt: string | null;
+};
+
 function pill(status: string) {
   if (status === "Resolved" || status === "Online") {
     return "bg-discord-green/15 text-discord-green";
@@ -149,6 +157,11 @@ export function AdminPanel() {
   const [betaNotice, setBetaNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [controls, setControls] = useState({ readOnly: false, inviteLock: false });
   const [updatingControl, setUpdatingControl] = useState<"readOnly" | "inviteLock" | null>(null);
+  const [blocks, setBlocks] = useState<BotAccessBlock[]>([]);
+  const [blockType, setBlockType] = useState<"guild" | "user">("guild");
+  const [blockTargetId, setBlockTargetId] = useState("");
+  const [blocksLoading, setBlocksLoading] = useState(false);
+  const [blocksNotice, setBlocksNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const checkAccess = useCallback(async () => {
     try {
@@ -234,6 +247,24 @@ export function AdminPanel() {
   useEffect(() => {
     if (access?.allowed && tab === "closed-beta") void loadClosedBeta();
   }, [access, tab, loadClosedBeta]);
+
+  const loadBlocks = useCallback(async () => {
+    setBlocksLoading(true);
+    try {
+      const response = await fetch("/api/admin/blocks", { cache: "no-store" });
+      const payload = (await response.json()) as { ok?: boolean; data?: BotAccessBlock[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to load blocks.");
+      setBlocks(payload.data ?? []);
+    } catch (error) {
+      setBlocksNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to load blocks." });
+    } finally {
+      setBlocksLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (access?.allowed && tab === "blocks") void loadBlocks();
+  }, [access, tab, loadBlocks]);
 
   async function handleLogin() {
     if (!password.trim()) return;
@@ -422,6 +453,37 @@ export function AdminPanel() {
       setBetaNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to update enrollment." });
     } finally {
       setBetaUpdating(null);
+    }
+  }
+
+  async function addBlock() {
+    setBlocksNotice(null);
+    try {
+      const response = await fetch("/api/admin/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: blockType, targetId: blockTargetId.trim() }),
+      });
+      const payload = (await response.json()) as { ok?: boolean; data?: BotAccessBlock[]; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to add block.");
+      setBlocks(payload.data ?? []);
+      setBlockTargetId("");
+      setBlocksNotice({ type: "success", text: `Blocked ${blockType === "guild" ? "server" : "server owner"}. The bot checks within 100 seconds.` });
+    } catch (error) {
+      setBlocksNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to add block." });
+    }
+  }
+
+  async function removeBlock(block: BotAccessBlock) {
+    setBlocksNotice(null);
+    try {
+      const response = await fetch(`/api/admin/blocks?id=${encodeURIComponent(block.id)}`, { method: "DELETE" });
+      const payload = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to remove block.");
+      setBlocks((items) => items.filter((item) => item.id !== block.id));
+      setBlocksNotice({ type: "success", text: "Block removed." });
+    } catch (error) {
+      setBlocksNotice({ type: "error", text: error instanceof Error ? error.message : "Failed to remove block." });
     }
   }
 
@@ -1010,6 +1072,51 @@ export function AdminPanel() {
                 </div>
               ));
             })()}
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "blocks" ? (
+        <div className="mt-6">
+          <div className="rounded-2xl border border-discord-red/30 bg-discord-darker p-4">
+            <p className="text-sm font-semibold text-discord-white">Bot access blocks</p>
+            <p className="mt-1 text-sm text-discord-lighterGray">
+              Blocking a server makes OnboardX leave it. Blocking a user makes OnboardX leave any server owned by that user. The bot checks every 100 seconds.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-[12rem_1fr_auto]">
+              <div>
+                <p className="text-sm font-medium text-discord-lighterGray">Block type</p>
+                <Dropdown
+                  value={blockType}
+                  onChange={(value) => setBlockType(value as "guild" | "user")}
+                  options={[
+                    { value: "guild", label: "Server ID" },
+                    { value: "user", label: "Server owner ID" },
+                  ]}
+                />
+              </div>
+              <label className="block text-sm font-medium text-discord-lighterGray">
+                Discord ID
+                <input value={blockTargetId} onChange={(event) => setBlockTargetId(event.target.value)} className="mt-2 w-full rounded-2xl border border-discord-gray/40 bg-discord-dark px-3 py-2 text-sm text-discord-white outline-none transition focus:border-discord-blue" placeholder={blockType === "guild" ? "Server ID" : "Owner user ID"} />
+              </label>
+              <button type="button" className="btn-primary self-end" onClick={() => void addBlock()}>Block</button>
+            </div>
+          </div>
+
+          {blocksNotice && <p className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${blocksNotice.type === "success" ? "border-discord-green/40 bg-discord-green/10 text-discord-green" : "border-discord-red/40 bg-discord-red/10 text-discord-red"}`}>{blocksNotice.text}</p>}
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-discord-gray/20 bg-discord-darker">
+            {blocksLoading ? (
+              <p className="px-4 py-6 text-center text-sm text-discord-lighterGray">Loading blocks...</p>
+            ) : blocks.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-discord-lighterGray">No bot access blocks configured.</p>
+            ) : blocks.map((block) => (
+              <div key={block.id} className="flex flex-wrap items-center gap-3 border-t border-discord-gray/20 px-4 py-4 first:border-t-0">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${block.type === "guild" ? "bg-discord-red/15 text-discord-red" : "bg-discord-yellow/15 text-discord-yellow"}`}>{block.type === "guild" ? "Server" : "Owner"}</span>
+                <span className="font-mono text-sm text-discord-white">{block.targetId}</span>
+                <button type="button" className="ml-auto inline-flex min-h-9 cursor-pointer items-center rounded-full px-3 text-sm font-semibold text-discord-red hover:bg-discord-red/15" onClick={() => void removeBlock(block)}>Remove</button>
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

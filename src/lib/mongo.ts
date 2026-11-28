@@ -110,7 +110,46 @@ export const COLLECTIONS = {
   applicationForms: 'application_forms',
   formSubmissions: 'form_submissions',
   oauthSessions: 'oauth_sessions',
+  botAccessBlocks: 'bot_access_blocks',
 } as const;
+
+export type BotAccessBlockType = 'guild' | 'user';
+export interface BotAccessBlock {
+  id: string;
+  type: BotAccessBlockType;
+  targetId: string;
+  createdAt: Date | null;
+}
+
+export async function listBotAccessBlocks(): Promise<BotAccessBlock[]> {
+  const dbHandle = await connectDb();
+  const documents = await dbHandle.collection(COLLECTIONS.botAccessBlocks).find({}).sort({ createdAt: -1 }).toArray();
+  return documents
+    .map((document) => ({
+      id: String(document._id),
+      type: document.type === 'user' ? 'user' as const : document.type === 'guild' ? 'guild' as const : null,
+      targetId: typeof document.targetId === 'string' ? document.targetId : '',
+      createdAt: document.createdAt instanceof Date ? document.createdAt : null,
+    }))
+    .filter((block): block is BotAccessBlock => block.type !== null && /^\d{15,25}$/.test(block.targetId));
+}
+
+export async function addBotAccessBlock(type: BotAccessBlockType, targetId: string): Promise<void> {
+  const dbHandle = await connectDb();
+  await dbHandle.collection(COLLECTIONS.botAccessBlocks).updateOne(
+    { type, targetId },
+    { $setOnInsert: { type, targetId, createdAt: new Date() } },
+    { upsert: true },
+  );
+}
+
+export async function removeBotAccessBlock(id: string): Promise<boolean> {
+  const dbHandle = await connectDb();
+  const { ObjectId } = await import('mongodb');
+  if (!ObjectId.isValid(id)) return false;
+  const result = await dbHandle.collection(COLLECTIONS.botAccessBlocks).deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
+}
 
 function asSessionData(document: Document | null): SessionData | null {
   if (!document || typeof document.sessionId !== 'string' || typeof document.userId !== 'string' ||
