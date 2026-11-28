@@ -109,7 +109,7 @@ export default function DashboardPage() {
             No manageable servers found. OnboardX is not in any of your servers.
           </p>
           <a
-            href="https://discord.com/oauth2/authorize?client_id=1399710116449878017&permissions=268446800&scope=bot%20applications.commands"
+            href="https://discord.com/oauth2/authorize?client_id=1489947414382116905&permissions=268446800&scope=bot%20applications.commands"
             className="btn-primary mt-4 inline-flex"
             target="_blank"
             rel="noreferrer"

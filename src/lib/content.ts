@@ -1,8 +1,8 @@
 export const LINKS = {
   invite:
-    "https://discord.com/oauth2/authorize?client_id=1399710116449878017&permissions=268446800&scope=bot%20applications.commands",
+    "https://discord.com/oauth2/authorize?client_id=1489947414382116905&permissions=268446800&scope=bot%20applications.commands",
   support: "https://discord.gg/FWJDzEthnc",
-  topgg: "https://top.gg/bot/1399710116449878017",
+  topgg: "https://top.gg/bot/1489947414382116905",
 } as const;
 
 export const STATS = [
