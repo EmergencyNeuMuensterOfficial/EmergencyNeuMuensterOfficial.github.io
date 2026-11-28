@@ -85,6 +85,8 @@ export const CONTROL_ACTIONS = {
   shutdown_all: { label: 'Shutdown All Clusters', requiresCluster: false },
   maintenance_on: { label: 'Enable Maintenance', requiresCluster: false },
   maintenance_off: { label: 'Disable Maintenance', requiresCluster: false },
+  rollout_beta: { label: 'Roll out to Closed Beta', requiresCluster: false },
+  rollout_full: { label: 'Roll out to all clusters', requiresCluster: false },
   restart_cluster: { label: 'Restart Cluster', requiresCluster: true },
   shutdown_cluster: { label: 'Shutdown Cluster', requiresCluster: true },
 } as const;

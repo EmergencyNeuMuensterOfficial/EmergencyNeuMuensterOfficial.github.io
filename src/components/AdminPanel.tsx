@@ -138,6 +138,7 @@ export function AdminPanel() {
   const [maintTitle, setMaintTitle] = useState("");
   const [maintWhen, setMaintWhen] = useState("");
   const [restarting, setRestarting] = useState<number | null>(null);
+  const [rollingOut, setRollingOut] = useState<"beta" | "full" | null>(null);
   const [openCluster, setOpenCluster] = useState<number | null>(null);
   const [guildQuery, setGuildQuery] = useState("");
   const [betaGuilds, setBetaGuilds] = useState<ClosedBetaGuild[]>([]);
@@ -253,18 +254,20 @@ export function AdminPanel() {
     }
   }
 
-  async function sendCommand(action: string, clusterId?: number) {
+  async function sendCommand(action: string, clusterId?: number): Promise<boolean> {
     try {
       const body: Record<string, unknown> = { action };
       if (clusterId != null) body.clusterId = clusterId;
-      await fetch("/api/admin/commands", {
+      const response = await fetch("/api/admin/commands", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!response.ok) return false;
       void loadData();
+      return true;
     } catch {
-      // silently fail
+      return false;
     }
   }
 
@@ -857,6 +860,38 @@ export function AdminPanel() {
           )}
 
           <div className="flex flex-wrap gap-2 border-t border-discord-gray/20 px-4 py-4">
+            <div className="mr-auto rounded-2xl border border-discord-gray/20 bg-discord-dark px-4 py-3">
+              <p className="text-sm font-semibold text-discord-white">Safe rollout</p>
+              <p className="mt-1 max-w-xl text-xs text-discord-lighterGray">
+                Beta restarts only clusters that currently host a Closed Beta server. Full release restarts every cluster. Both run one cluster at a time with a protected cooldown.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={rollingOut !== null}
+                  className="inline-flex min-h-9 cursor-pointer items-center rounded-full bg-discord-blue px-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+                  onClick={() => {
+                    if (!window.confirm("Start a staged Closed Beta rollout? Only affected clusters will restart one at a time.")) return;
+                    setRollingOut("beta");
+                    void sendCommand("rollout_beta").finally(() => setRollingOut(null));
+                  }}
+                >
+                  {rollingOut === "beta" ? "Queueing Beta..." : "Roll out Beta"}
+                </button>
+                <button
+                  type="button"
+                  disabled={rollingOut !== null}
+                  className="inline-flex min-h-9 cursor-pointer items-center rounded-full bg-discord-yellow/15 px-3 text-sm font-semibold text-discord-yellow hover:bg-discord-yellow/25 disabled:cursor-wait disabled:opacity-60"
+                  onClick={() => {
+                    if (!window.confirm("Start a staged full release? Every cluster will restart one at a time.")) return;
+                    setRollingOut("full");
+                    void sendCommand("rollout_full").finally(() => setRollingOut(null));
+                  }}
+                >
+                  {rollingOut === "full" ? "Queueing Full Release..." : "Roll out Full Release"}
+                </button>
+              </div>
+            </div>
             <button
               type="button"
               className="btn-primary"
